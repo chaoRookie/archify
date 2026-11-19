@@ -13,7 +13,7 @@ export function categorizeDiagnostic(entry) {
     else if (/^(?:finalize\/(?:stage-failure|invalid-receipt)|viewer\/browser-check-runtime)/u.test(code)) category = 'capability-limit';
     else if (/\/(?:invalid-|non-finite-)/u.test(code) && !code.startsWith('i18n/')) category = 'fact-error';
     else if (/(?:-(?:overlap|unplaced|too-wide|border-run|canvas-limit|readability|pin-conflict|preset-conflict|above-area|below-area|geometry-sizing))$/u.test(code)) category = 'capability-limit';
-    else if (/^(?:internal|legend|composition|geometry|layout|i18n)\//u.test(code)
+    else if (/^(?:internal|legend|composition|geometry|layout|clean-flow|i18n)\//u.test(code)
       || /(?:-capacity|-overflow|-unsupported|-not-drawn|-shorthand-limit|-size|-budget|crowded-|self-relationship|^explainer\/(?:source|resource)-limit)/u.test(code)) category = 'capability-limit';
     else category = 'fact-error';
   }

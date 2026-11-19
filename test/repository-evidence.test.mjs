@@ -729,20 +729,20 @@ test('evidence fails closed without a root, on wrong origin, missing blobs, or i
   assert.equal(fs.readFileSync(output, 'utf8'), 'trusted previous artifact');
 });
 
-test('--repo-root reaches every typed renderer and schema limits evidence shape', () => {
+test('--repo-root reaches renderers and validates every source on a node', () => {
   const data = fixture();
   const workflowOutput = path.join(data.root, 'workflow.html');
   let result = run(['render', 'workflow', path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'), workflowOutput, '--repo-root', data.root]);
   assert.equal(result.status, 0, result.stderr);
 
   data.diagram.components[0].sources = [
-    { path: 'src/router.js' },
-    { path: 'src/router.js' },
-    { path: 'src/router.js' },
-    { path: 'src/router.js' },
+    { path: 'src/router.js', line: 1 },
+    { path: 'src/router.js', line: 2 },
+    { path: 'src/router.js', line: 3 },
+    { path: 'src/store.js', line: 1 },
   ];
   fs.writeFileSync(data.input, JSON.stringify(data.diagram));
-  result = run(['validate', 'architecture', data.input, '--repo-root', data.root, '--json']);
+  result = run(['deliver', 'architecture', data.input, path.join(data.root, 'evidence.html'), '--repo-root', data.root, '--json']);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(JSON.parse(result.stdout).evidence.references >= 4);
 });

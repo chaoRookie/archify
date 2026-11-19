@@ -828,3 +828,15 @@ test('an invalid authored label preserves its diagnosis and the existing artifac
   assert.equal(rendered.status, 1);
   assert.equal(fs.readFileSync(output, 'utf8'), 'previous complete diagram');
 });
+
+test('the stage range reports display capacity and retains the recorded count', t => {
+  for (const count of [1, 6]) {
+    const doc = pipeline();
+    doc.stages = Array.from({length: count}, (_, index) => ({label: `Stage ${index + 1}`}));
+    const {receipt} = inspect(t, doc);
+    const issue = receipt.diagnostics.find(entry => entry.subject.path === '/stages');
+    assert.equal(issue.category, 'capability-limit');
+    assert.match(issue.message, /^\[capability-limit\]/);
+    assert.match(issue.supportedFixes.join(' '), /another view|layer/);
+  }
+});

@@ -67,9 +67,14 @@ export function validateSchema(diagramType, data) {
       const capacity = (error.keyword === 'maxItems' && !/\/(?:pos|size|via|viewBox|route|lines)(?:\/\d+)?$/u.test(annotated.path))
         || (error.keyword === 'maximum' && diagramType === 'workflow' && /\/(col|fromCol|toCol)$/u.test(annotated.path))
         || (error.keyword === 'maxLength' && !annotated.path.endsWith('/id'));
+      const tooFewForView = error.keyword === 'minItems' && (
+        (diagramType === 'dataflow' && ['/stages', '/nodes'].includes(annotated.path))
+        || (diagramType === 'sequence' && annotated.path === '/participants')
+      );
       const partialTime = diagramType === 'timeline' && error.keyword === 'pattern' && /^\/events\/\d+\/at$/u.test(annotated.path)
         && partialTimestamp(data.events[Number(annotated.path.split('/')[2])].at);
       const supportedFixes = partialTime ? ['Keep the date at its recorded precision in a dated list or table, or supply a verified timestamp with an offset.']
+        : tooFewForView ? ['Show the recorded items in an ordered list or another view that supports this count.']
         : capacity ? ['Split or layer the view, or use a representation that can display the complete input with its relationships.']
         : {
         additionalProperties: [`represent the value in a supported field or accompanying note instead of unsupported property ${JSON.stringify(error.params?.additionalProperty)}`],
@@ -85,7 +90,7 @@ export function validateSchema(diagramType, data) {
         maxLength: [`provide at most ${error.params?.limit} character(s)`],
       }[error.keyword] || [];
       return {
-        category: capacity || partialTime ? 'capability-limit' : 'fact-error',
+        category: capacity || tooFewForView || partialTime ? 'capability-limit' : 'fact-error',
         code: `schema/${error.keyword}`,
         severity: 'error',
         message: `${annotatePath(error.instancePath, data)} ${error.message}`,
