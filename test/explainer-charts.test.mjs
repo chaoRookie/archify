@@ -77,3 +77,23 @@ test('a blank data cell is missing data, never drawn as zero', async () => {
   }
   assert.match(chartFromData(Buffer.from('k,v\nA,60\nB,40\n'), 'a.csv', { kind: 'pie', x: 'k', y: ['v'] }).text, /"A" : 60\n {2}"B" : 40/);
 });
+
+test('a data chart preserves series and reports labels it cannot display verbatim', async () => {
+  const {chartFromData} = await import('../archify/explainer/charts.mjs');
+  const bytes = Buffer.from('day,p50,p99\nMon,5,9\n');
+  const result = chartFromData(bytes, 'data.csv', {kind: 'pie', x: 'day', y: ['p50', 'p99']});
+  assert.equal(result.category, 'capability-limit');
+  assert.match(result.error, /every requested series/);
+  for (const label of [null, 'A"B', 'A\\B']) {
+    const data = Buffer.from(JSON.stringify([{label, value: 9}]));
+    assert.ok(chartFromData(data, 'data.json', {kind: 'bar', x: 'label', y: ['value']}).error);
+  }
+});
+
+test('data chart preserves numeric meaning and rejects unreadable CSV records', async () => {
+  const {chartFromData} = await import('../archify/explainer/charts.mjs');
+  const chart = csv => chartFromData(Buffer.from(csv), 'data.csv', {kind: 'bar', x: 'k', y: ['v']});
+  assert.match(chart('k,v\nA,"1,234.50"').text, /1234.5/);
+  assert.match(chart('k,v\nA,"1,23"').error, /non-numeric/);
+  assert.ok(chart('k,v\nA"B",4').error);
+});

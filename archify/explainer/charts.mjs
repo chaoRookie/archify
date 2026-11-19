@@ -23,7 +23,7 @@ function pieLegend(text) {
 /** Render a Mermaid chart to static SVG, or return a located diagnostic reason. */
 export function compileExplainerChart(text) {
   const type = detectType(text);
-  if (type && NATIVE[type]) return { error: `Mermaid ${type} is drawn with the native ${NATIVE[type]} shorthand, which Archify validates and lets readers explore.`, example: `@${NATIVE[type].split(' ')[0]} id=...` };
+  if (type && NATIVE[type]) return { category: 'capability-limit', error: `Mermaid ${type} is drawn with the native ${NATIVE[type]} shorthand, which Archify validates and lets readers explore.`, example: `@${NATIVE[type].split(' ')[0]} id=...` };
   try {
     const result = render(pieLegend(text), { padding: 8, fontSize: 13, links: false, images: false, config: { xyChart: { width: 480, height: 260, showDataLabel: true }, quadrantChart: { chartWidth: 400, chartHeight: 400 } } });
     // A rotated CJK axis title lies on its side; vertical writing keeps the characters upright.
@@ -32,12 +32,10 @@ export function compileExplainerChart(text) {
   } catch (error) {
     if (!(error instanceof PeleError)) throw error;
     const supported = 'pie, xychart-beta (bar and line), quadrantChart, sankey-beta, radar-beta or venn-beta';
-    return { error: error.code === 'unsupported-diagram' ? `A chart fence supports ${supported}.` : error.message.split('\n')[0], line: error.line, example: 'pie title Share\n  "A" : 60\n  "B" : 40' };
+    return { category: error.code === 'unsupported-diagram' ? 'capability-limit' : 'fact-error', error: error.code === 'unsupported-diagram' ? `A chart fence supports ${supported}.` : error.message.split('\n')[0], line: error.line, example: 'pie title Share\n  "A" : 60\n  "B" : 40' };
   }
 }
 
-// A data file becomes chart text: CSV with a header row, or JSON as an array of objects. Labels come
-// from column x and one series from each column in y; a pie takes the first y column as its values.
 export function chartFromData(bytes, filePath, { kind, x, y, unit }) {
   let rows;
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/u, '');
@@ -45,24 +43,51 @@ export function chartFromData(bytes, filePath, { kind, x, y, unit }) {
     try { rows = JSON.parse(text); } catch { return { error: 'The data file is not valid JSON.' }; }
     if (!Array.isArray(rows) || !rows.every(row => row && typeof row === 'object' && !Array.isArray(row))) return { error: 'JSON chart data must be an array of objects.' };
   } else {
-    const cells = line => { const out = []; let cell = '', quoted = false; for (let i = 0; i < line.length; i++) { const c = line[i]; if (quoted) { if (c === '"' && line[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') quoted = false; else cell += c; } else if (c === '"') quoted = true; else if (c === ',') { out.push(cell.trim()); cell = ''; } else cell += c; } out.push(cell.trim()); return out; };
+    function cells(line) {
+      const fields = [];
+      const pattern = /(?:"((?:[^"]|"")*)"|([^",]*))(,|$)/gyu;
+      for (;;) {
+        const field = pattern.exec(line);
+        if (!field) return null;
+        fields.push(field[1] === undefined ? field[2].trim() : field[1].replaceAll('""', '"'));
+        if (!field[3]) return fields;
+      }
+    }
     const lines = text.split(/\r?\n/u).filter(line => line.trim());
     if (lines.length < 2) return { error: 'CSV chart data needs a header row and at least one data row.' };
     const header = cells(lines[0]);
-    rows = lines.slice(1).map(line => Object.fromEntries(cells(line).map((value, i) => [header[i], value])));
+    if (!header) return {error: 'Invalid CSV quoting in the header.'};
+    if (new Set(header).size !== header.length || header.includes('')) return {error: 'CSV column names must be nonempty and unique.'};
+    rows = [];
+    for (const [index, line] of lines.slice(1).entries()) {
+      const values = cells(line);
+      if (!values) return {category: 'capability-limit', error: `Cannot read CSV data row ${index + 1} as a single record. Check its quoting or use a JSON array to preserve multiline values.`};
+      if (values.length !== header.length) return {error: `CSV data row ${index + 1} has ${values.length} cells for ${header.length} columns.`};
+      rows.push(Object.fromEntries(header.map((name, i) => [name, values[i]])));
+    }
   }
   const columns = new Set(rows.flatMap(row => Object.keys(row)));
   const missing = [x, ...y].find(column => !columns.has(column));
   if (missing) return { error: `The data file has no column "${missing}". Columns: ${[...columns].join(', ')}.` };
-  if (rows.length > (kind === 'pie' ? 12 : 60)) return { error: `A ${kind} chart takes at most ${kind === 'pie' ? 12 : 60} rows; this file has ${rows.length}.` };
-  const quote = value => `"${String(value).replace(/["\\]/gu, '')}"`;
-  // A blank cell is missing data, not zero: Number('') is 0, so blanks are rejected before conversion.
+  if (kind === 'pie' && y.length !== 1) return {category: 'capability-limit', error: 'A pie chart displays one series. Use a bar chart or separate pies to display every requested series.'};
+  if (rows.length > (kind === 'pie' ? 12 : 60)) return { category: 'capability-limit', error: `A ${kind} chart takes at most ${kind === 'pie' ? 12 : 60} rows; this file has ${rows.length}. Split the chart or use a table that includes every row.` };
   const blank = value => value === undefined || value === null || String(value).trim() === '';
-  const numbers = column => rows.map(row => blank(row[column]) ? NaN : Number(String(row[column]).replace(/,/gu, '')));
+  const missingLabel = rows.findIndex(row => blank(row[x]));
+  if (missingLabel >= 0) return {error: `Column "${x}" is empty in data row ${missingLabel + 1}. Supply its recorded label or use a table marking it unknown.`};
+  const labels = [...rows.map(row => row[x]), ...y, unit || ''];
+  if (labels.some(label => typeof label !== 'number' && typeof label !== 'string')) return {error: 'Chart labels must be text or numbers. Use a table for structured values.'};
+  if (labels.some(label => /["\\\r\n]/u.test(String(label)))) return {category: 'capability-limit', error: 'The chart format cannot display a label containing a quote, backslash or line break verbatim. Use a table to preserve its text.'};
+  const quote = value => `"${value}"`;
+  const numbers = column => rows.map(row => {
+    const value = row[column];
+    if (typeof value === 'number') return value;
+    if (typeof value !== 'string' || !/^[+-]?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(value.trim())) return NaN;
+    return Number(value.replaceAll(',', ''));
+  });
   for (const column of y) {
     const bad = numbers(column).findIndex(value => !Number.isFinite(value));
     if (bad < 0) continue;
-    if (blank(rows[bad][column])) return { error: `Column "${column}" is empty in data row ${bad + 1}. A blank is missing data, not zero: fill in the value, or leave the row out and say so in the caption.` };
+    if (blank(rows[bad][column])) return { error: `Column "${column}" is empty in data row ${bad + 1}. A blank is missing data, not zero: supply the recorded value or use a table marking it missing.` };
     return { error: `Column "${column}" has a non-numeric value in data row ${bad + 1}: ${rows[bad][column]}.` };
   }
   if (kind === 'pie') { const values = numbers(y[0]); return { text: `pie\n${rows.map((row, i) => `  ${quote(row[x])} : ${values[i]}`).join('\n')}` }; }

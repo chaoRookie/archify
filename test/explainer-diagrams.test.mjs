@@ -211,7 +211,7 @@ test('explainer diagrams: sequence phase rows become native segments over the fo
   assert.throws(() => compileExplainerDiagram('sequence', ['b | s | SYN', 'phase | Empty'], { id: 'empty' }), error => (error.archifyDiagnostics || error.diagnostics || []).some(item => /phase needs/.test(item.message)));
 });
 
-test('explainer diagrams: a linear workflow too wide for one row wraps into rows; questions get the decision mark', () => {
+test('explainer diagrams: a linear workflow too wide for one row wraps into rows; a question retains its authored text', () => {
   const long = (i) => `step${i} | Step ${i} with a deliberately long label for width | backend`;
   const rows = [1, 2, 3, 4, 5, 6, 7].map(long).concat([1, 2, 3, 4, 5, 6].map(i => `step${i} > step${i + 1}`));
   const spec = compileExplainerDiagram('workflow', rows, { id: 'wrapped' });
@@ -220,7 +220,8 @@ test('explainer diagrams: a linear workflow too wide for one row wraps into rows
   assert.deepEqual(spec.nodes.map(node => node.id), ['step1', 'step2', 'step3', 'step4', 'step5', 'step6', 'step7'], 'reading order is kept');
   const short = compileExplainerDiagram('workflow', ['ask | Needs scaling? | backend', 'keep | Keep it | backend', 'ask > keep | no'], { id: 'short' });
   assert.equal(short.lanes.length, 1);
-  assert.equal(short.nodes[0].icon, 'decision');
+  assert.equal(short.nodes[0].icon, undefined);
+  assert.equal(short.nodes[0].label, 'Needs scaling?');
   assert.equal(short.nodes[1].icon, undefined);
 });
 
@@ -235,4 +236,19 @@ test('explainer diagrams: a phase that recurs later in the flow keeps phase rows
   const spec = compileExplainerDiagram('workflow', ['lane run | Orchestrate', 'lane work | Work', 'start | Start | backend | run', 'do | Do | backend | work', 'end | Record | backend | run', 'start > do', 'do > end'], { id: 'recur' });
   assert.equal(spec.lanes.length, 2, 'the recurring phase stays a lane');
   assert.equal(spec.phases, undefined);
+});
+
+test('shorthand discloses assumed display types and preserves supplied actor labels', () => {
+  assert.throws(() => compileExplainerDiagram('sequence', ['actor api | API | backend', 'api | typo | Read']), /no actor declaration/);
+  const declarations = ['actor a | Service | backend', 'actor b | Service | backend'];
+  assert.throws(() => compileExplainerDiagram('sequence', [...declarations, 'a | Service | Read']), /Several actors/);
+  assert.equal(compileExplainerDiagram('sequence', [...declarations, 'a | b | Read']).messages[0].to, 'b');
+  const spec = compileExplainerDiagram('sequence', ['A | B | Read']);
+  assert.deepEqual(spec.participants.map(node => node.label), ['A', 'B']);
+  assert.match(spec.cards[0].title, /Inferred/);
+  assert.deepEqual(spec.cards[0].items, ['A — external', 'B — external']);
+});
+
+test('timeline event shorthand resolves declared lane membership', () => {
+  assert.throws(() => compileExplainerDiagram('timeline', ['lane api | API', 'one | 2026-02-01T12:00Z | Read | typo']), /declared lane/);
 });

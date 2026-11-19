@@ -71,7 +71,7 @@ for (const [index, span] of raw.entries()) {
   }
   if (hasEnd && span.end < span.start) timing(`ends (${span.end}) before it starts (${span.start}).`, ['Correct start or end from the recorded timing.']);
   if (hasEnd && hasDuration && Math.abs(span.end - span.start - span.duration) > 1e-9) {
-    timing(`states end ${span.end} and duration ${span.duration}, which disagree with start ${span.start}.`, ['Keep only one of end or duration.']);
+    timing(`states end ${span.end} and duration ${span.duration}, which disagree with start ${span.start}.`, ['Verify the start, end and duration against the same recorded span and unit.']);
   }
   if (!hasEnd && !hasDuration && span.status !== 'incomplete') {
     timing('has neither end nor duration. A span without a recorded end must be marked status "incomplete".', ['Add the recorded end or duration.', 'Set status to "incomplete" if the trace has no end for it.']);
@@ -80,7 +80,7 @@ for (const [index, span] of raw.entries()) {
 for (const [index, span] of raw.entries()) {
   if (span.parent !== undefined && !byId.has(span.parent)) {
     fail('waterfall/missing-parent', `Span "${span.id}" names parent "${span.parent}", which is not declared.`,
-      { path: `/spans/${index}/parent`, nodeId: span.id }, { parent: span.parent }, ['Declare the parent span.', 'Remove parent to make this a root span.']);
+      { path: `/spans/${index}/parent`, nodeId: span.id }, { parent: span.parent }, ['Check the trace and declare or reference the recorded parent span.']);
   }
 }
 {
@@ -144,17 +144,11 @@ function percent(value) {
 }
 
 // ---- Tones ---------------------------------------------------------------------
-// Colour states who did the work: each service gets its own palette family in
-// order of first appearance, and a span without one inherits its parent's.
-// A span no service owns stays neutral. Red is never a service colour: it is
-// reserved for status "error", so a failure is never mistaken for a team.
 const SERVICE_TONES = ['frontend', 'backend', 'database', 'cloud', 'messagebus'];
 const services = [...new Set(rows.map((row) => row.service).filter(Boolean))];
-const serviceOf = new Map();
-for (const row of rows) serviceOf.set(row.id, row.service ?? (row.parent !== undefined ? serviceOf.get(row.parent) : undefined));
 const serviceTone = (service) => (service === undefined ? 'external' : SERVICE_TONES[services.indexOf(service) % SERVICE_TONES.length]);
 const STATUS_TONE = { error: 'security', cancelled: 'external' };
-const toneOf = (row) => STATUS_TONE[row.status] ?? serviceTone(serviceOf.get(row.id));
+const toneOf = (row) => STATUS_TONE[row.status] ?? serviceTone(row.service);
 
 // ---- Geometry ------------------------------------------------------------------
 // Name column: tree indent, then a service dot, then the name.
@@ -317,7 +311,7 @@ function renderGuides() {
 function renderRow(row, order) {
   const parent = row.parent !== undefined ? placed.find((candidate) => candidate.id === row.parent) : null;
   const timing = `${timeNumber(row.start)}–${row.open ? '…' : timeNumber(row.end)} ${unitLabel} · ${row.label} · ${i18nText(locale, 'waterfall.share', { percent: percent(row.duration), total: formatDuration(wall) })}`;
-  const service = serviceOf.get(row.id);
+  const service = row.service;
   const passport = { kind: row.tone, sublabel: [timing, row.detail].filter(Boolean).join(' — '), context: [service, parent?.name].filter(Boolean).join(' \u203a ') || undefined };
   const midY = row.y + layout.rowH / 2;
   const barY = midY - layout.barH / 2;

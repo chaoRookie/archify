@@ -185,6 +185,7 @@ export function applyTemplate(template, {
     ? `<p class="subtitle">${esc(subtitle)}</p>`
     : '';
   const i18nData = `    <script id="archify-i18n-data" type="application/json">${i18nJson}</script>`;
+  const legendSummary = svg.match(/<desc data-legend-summary="">([^<]*)<\/desc>/u)?.[1];
   return localizeTemplate(template, resolvedLocale)
     .replace(I18N_PLACEHOLDER, () => i18nData)
     .replace(TEMPLATE_PLACEHOLDERS[0], () => `<html lang="${esc(resolvedLocale)}" data-theme="dark" data-preset="${esc(visualPreset)}">`)
@@ -194,7 +195,7 @@ export function applyTemplate(template, {
       ? `${indent}${renderedSubtitle}${newline}`
       : '')
     .replace(SVG_SLOT_RE, () => svg)
-    .replace(CARDS_SLOT_RE, () => cards)
+    .replace(CARDS_SLOT_RE, () => legendSummary ? `<p class="legend-summary">${legendSummary}</p>${cards}` : cards)
     .replace(SOURCE_EVIDENCE_PLACEHOLDER, () => sourceEvidence
       ? `    <script id="archify-source-evidence-data" type="application/json">${sourceEvidenceJson}</script>`
       : '');

@@ -196,3 +196,14 @@ test('waterfall: services past the five colours share a legend entry instead of 
   assert.ok(labels.includes('auth · postgres'), labels.join(' | '));
   assert.ok(labels.includes('cart'), labels.join(' | '));
 });
+
+test('a nested span only names a service when the span supplies one', () => {
+  const diagram = clone(small);
+  const child = diagram.spans.find(span => span.parent);
+  delete child.service;
+  const result = run(diagram);
+  assert.equal(result.status, 0, result.stderr);
+  const html = fs.readFileSync(result.output, 'utf8');
+  const node = html.match(new RegExp(`<g [^>]*data-node-id="${child.id}"[^>]*>`))[0];
+  assert.doesNotMatch(node, /data-waterfall-service=/);
+});

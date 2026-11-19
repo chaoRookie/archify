@@ -133,7 +133,7 @@ export function measureLegend(entries, {
       message,
       subject: { diagramType, path: `/meta/legend/entries/${tooWide.kind}/label` },
       evidence: { kind: tooWide.kind, measuredWidthPx: tooWide.width, availableWidthPx: width },
-      supportedFixes: ['shorten the legend label or use a wider viewBox'],
+      supportedFixes: ['use a wider viewBox for the full legend label'],
     }]);
   }
 
@@ -148,7 +148,7 @@ export function measureLegend(entries, {
       message,
       subject: { diagramType, path: '/meta/legend' },
       evidence: { rowCount: footprint.rowCount, requiredTopY: legendTopY, availableTopY: minTitleY },
-      supportedFixes: ['shorten legend labels, hide nonessential entries, or use a wider viewBox'],
+      supportedFixes: ['widen the viewBox or reserve more space below the diagram for all legend rows'],
     }]);
   }
 
@@ -186,7 +186,7 @@ export function measureLegend(entries, {
       message,
       subject: { diagramType, path: '/meta/legend' },
       evidence: { legendKind: collision.kind, legendRect: collision },
-      supportedFixes: ['shorten or hide legend entries, use a wider viewBox, or move the authored relationship route/label out of the legend band'],
+      supportedFixes: ['expand the canvas or move the route and label clear of the legend band'],
     }]);
   }
 
@@ -204,7 +204,10 @@ export function measureLegend(entries, {
 export function renderLegend({ entries, layout, renderSwatch, locale, labelClass = 't-muted', labelWeight = 500 }) {
   if (!entries.length) return '';
   const measured = measureLegend(entries, layout);
-  if (!measured) return '';
+  if (!measured) {
+    const key = entries.map(entry => `${entry.kind} — ${entry.label}`).join(' · ');
+    return `<desc data-legend-summary="">${esc(translateMessage(locale, 'legend.title'))}: ${esc(key)}</desc>`;
+  }
   const hasInteractiveEntries = measured.entries.some((entry) => entry.interactive);
   const renderedFontSize = renderedLegendFontSize(measured.fontSize);
   const rootAttributes = hasInteractiveEntries ? ' data-legend="" data-legend-bridge=""' : ' data-legend=""';

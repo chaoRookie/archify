@@ -22,7 +22,7 @@
     // A diagram needs enough width for its smallest label to reach the reading floor.
     const readableWidth = svg => {
       const viewWidth = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width;
-      const smallest = Math.min(...all('text',svg).filter(text=>text.textContent.trim() && !text.closest('[data-legend]')).map(text=>(parseFloat(text.getAttribute('font-size')) || parseFloat(getComputedStyle(text).fontSize)) / secondary(text)));
+      const smallest = Math.min(...all('text',svg).filter(text=>text.textContent.trim()).map(text=>(parseFloat(text.getAttribute('font-size')) || parseFloat(getComputedStyle(text).fontSize)) / secondary(text)));
       return Number.isFinite(smallest) && smallest > 0 ? viewWidth * floor / smallest : 0;
     };
     // Beside its steps, the diagram column is exactly that wide; without room for both, it wraps above them.
@@ -166,7 +166,6 @@
       label?.setAttribute('x',left + 14);
     });
   }
-  // The legend and grid are hidden in the preview, so fit the viewBox to the drawing itself.
   function cropDiagramPreviews() {
     all('.diagram-preview>svg').forEach(svg=>{
       if (svg.dataset.cropped) return;

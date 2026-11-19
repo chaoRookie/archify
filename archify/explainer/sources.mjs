@@ -40,13 +40,13 @@ function location(document, pointer, component) {
     ...(Number.isInteger(entry?.column) ? { column: entry.column } : {}) };
 }
 
-function fail(document, pointer, component, reason, message, fix, example) {
+function fail(document, pointer, component, reason, message, fix, example, category) {
   const examples = {
     source: '{"id":"router","title":"Router","path":"src/router.js","lines":[1,3]}',
     code: '{"id":"code","type":"code","source":"router"}',
     image: '{"id":"image","type":"image","path":"images/figure.png","alt":"Figure"}',
   };
-  throwDiagnosticError(message, [{ code: `explainer/${reason}`, severity: 'error', message,
+  throwDiagnosticError(message, [{ code: `explainer/${reason}`, category, severity: 'error', message,
     subject: location(document, pointer, component),
     evidence: { reason, example: example || examples[component] || examples.source }, supportedFixes: [fix] }]);
 }
@@ -310,7 +310,7 @@ export async function resolveExplainerSources(document, { repoRoot, baseDir, sou
     let built;
     try { built = chartFromData(bytes, relative, block.data); } catch { built = { error: 'The data file is not UTF-8 text.' }; }
     const chart = built.error ? built : compileExplainerChart(built.text);
-    if (chart.error) fail(context, pointer, 'chart', 'chart-data', chart.error, '@chart type=bar data=latency.csv x=day y=p50,p99');
+    if (chart.error) fail(context, pointer, 'chart', 'chart-data', chart.error, chart.error, undefined, chart.category);
     charts[block.id] = built.text;
     dependencies.push(Object.freeze({ kind: 'data', id: block.id, path: relative, ...digest(bytes) }));
   }

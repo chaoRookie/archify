@@ -51,8 +51,7 @@ steps. Overlapping bars on different rows are concurrent work.
 A span with children is drawn as a tinted, outlined bracket over its time; a
 span that does the work itself is a solid bar, so the paint separates inclusive
 summaries from leaf work. Colour states the `service`: each service gets its own
-palette family in order of first appearance (a span without one inherits its
-parent's; unowned spans are neutral), with a dot in the name column and a legend
+palette family in order of first appearance (unattributed spans are neutral), with a dot in the name column and a legend
 entry when more than one service appears. There are five service colours; past
 five services they repeat, and services sharing a colour share one legend entry
 (`gateway · inventory`), so the key never ties a colour to a single service it

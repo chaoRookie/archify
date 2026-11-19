@@ -127,6 +127,11 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
       fail(entry.context, 'diagram-row', `Expected ${min === max ? min : `${min}–${max}`} pipe-separated fields.`, example);
     }
   };
+  const inferredTypes = [];
+  const nodeType = (label, supplied, fallback) => {
+    if (!supplied) inferredTypes.push(`${label} — ${fallback}`);
+    return supplied || fallback;
+  };
   const edgeCounts = new Map();
   const edgeId = (from, to) => {
     const base = `${from}-to-${to}`;
@@ -141,13 +146,18 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
     const byId = new Map();
     for (const entry of entries.filter(entry => entry.parts[0].startsWith('actor '))) {
       expect(entry, 2, 3, 'actor api | API | backend');
-      const actor = { id: safeId(entry.parts[0].slice(6).trim(), entry.context), label: entry.parts[1], type: entry.parts[2] || 'backend' };
+      const actor = { id: safeId(entry.parts[0].slice(6).trim(), entry.context), label: entry.parts[1], type: nodeType(entry.parts[1], entry.parts[2], 'backend') };
       context.rowMap[`/participants/${spec.participants.length}`] = entry.context.line;
-      spec.participants.push(actor); byId.set(actor.id, actor); aliases.set(actor.label, actor.id); aliases.set(actor.id, actor.id);
+      spec.participants.push(actor); byId.set(actor.id, actor);
+      aliases.set(actor.label, aliases.has(actor.label) ? null : actor.id);
     }
+    const declaredActors = byId.size > 0;
     const actorId = (label, ctx) => {
-      if (aliases.has(label)) return aliases.get(label);
-      const actor = { id: inferredId(label), label, type: 'external' };
+      if (declaredActors && byId.has(label)) return label;
+      if (aliases.get(label)) return aliases.get(label);
+      if (aliases.has(label)) fail(ctx, 'diagram-ambiguous-endpoint', `Several actors use the label "${label}". Reference the recorded actor by id.`, 'client | api | Read');
+      if (declaredActors) fail(ctx, 'diagram-unknown-endpoint', `The endpoint "${label}" has no actor declaration. Verify its identity or declare the recorded actor.`, 'actor client | Client | frontend');
+      const actor = { id: inferredId(label), label, type: nodeType(label, undefined, 'external') };
       if (byId.has(actor.id)) fail(ctx, 'diagram-actor-collision', 'Actor labels resolve to the same id; declare explicit actor identities.', 'actor client | Client | frontend');
       spec.participants.push(actor); byId.set(actor.id, actor); aliases.set(label, actor.id);
       return actor.id;
@@ -186,13 +196,11 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
         if (diagramType === 'workflow') expect(entry, 2, 4, 'trace | Compare slow traces | backend | locate');
         else expect(entry, 2, 3, 'api | API | backend');
         context.rowMap[`/${diagramType === 'architecture' ? 'components' : 'nodes'}/${nodes.length}`] = entry.context.line;
-        const node = { id: safeId(entry.parts[0], entry.context), label: entry.parts[1], type: entry.parts[2] || 'backend' };
+        const node = { id: safeId(entry.parts[0], entry.context), label: entry.parts[1], type: nodeType(entry.parts[1], entry.parts[2], 'backend') };
         // Wide enough that the label stays centred between the corner icon and the opposite edge;
         // a narrower node drops the label below the icon, out of line with its neighbours.
         const labelWidth = Math.ceil(Math.max(textUnits(node.label) * 6.8 + 12, minimumNodeTextWidth(node.label, 11) + 2 * (SEMANTIC_SIGIL_FOOTPRINT + 2)));
         if (diagramType === 'workflow' && labelWidth > 92) node.width = labelWidth;
-        // A question is a decision point: the native decision mark tells it apart from a step.
-        if (diagramType === 'workflow' && /[?？]$/u.test(node.label)) node.icon = 'decision';
         if (entry.parts[3]) nodeLanes.set(node.id, { lane: safeId(entry.parts[3], entry.context), context: entry.context });
         nodes.push(node);
       }
@@ -218,6 +226,8 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
       spec.connections = edges;
     } else if (lanes.size) {
       for (const [id, { lane, context: ctx }] of nodeLanes) if (!lanes.has(lane)) fail(ctx, 'diagram-lane', `Node ${id} names an undeclared lane.`, 'lane locate | Locate the cause');
+      for (const node of nodes) if (lanes.size > 1 && !nodeLanes.has(node.id)) fail(context, 'diagram-lane', `Node ${node.id} has no declared lane in a multi-lane workflow.`, 'Specify its supported lane or use native JSON with the known grouping.');
+      for (const lane of lanes.keys()) if (lanes.size > 1 && ![...nodeLanes.values()].some(entry => entry.lane === lane)) fail(context, 'diagram-shorthand-limit', `This shorthand cannot place empty lane "${lane}".`, 'Use native JSON to retain the lane or include it in a separate annotated view.');
       const first = lanes.keys().next().value;
       const order = [...lanes.keys()];
       const ranked = [...placed].sort((a, b) => a.col - b.col || a.row - b.row).map(({ row, col, ...node }) => ({ ...node, lane: nodeLanes.get(node.id)?.lane || first }));
@@ -267,7 +277,7 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
       }
       const rows = wrapped || placed;
       if (rows.some(node => node.col > 5)) fail(context, 'diagram-shorthand-limit', 'Native workflow columns are limited to 0–5.', 'Declare phase lanes with "lane <id> | label" rows and assign nodes to them.');
-      spec.lanes = Array.from({ length: Math.max(1, ...rows.map(node => node.row + 1)) }, (_, row) => ({ id: `lane-${row}`, label: wrapped ? `${spec.meta.title} · ${row + 1}` : row ? `分支 ${row}` : spec.meta.title }));
+      spec.lanes = Array.from({ length: Math.max(1, ...rows.map(node => node.row + 1)) }, (_, row) => ({ id: `lane-${row}`, label: wrapped || row ? `${spec.meta.title} · ${row + 1}` : spec.meta.title }));
       spec.nodes = rows.map(({ row, ...node }) => ({ ...node, lane: `lane-${row}` }));
       spec.edges = edges;
     }
@@ -290,9 +300,11 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
         lanes.set(laneId, { id: laneId, label: entry.parts[1] });
       }
     }
+    const declaredLanes = lanes.size > 0;
     for (const entry of entries.filter(entry => !entry.parts[0].startsWith('lane '))) {
       expect(entry, 3, 5, 'deploy | 2026-10-01T10:00:00+08:00 | 发布 v2 | release | change');
       const [eventId, at, eventTitle, authoredLane, kind] = entry.parts;
+      if (declaredLanes && !lanes.has(authoredLane)) fail(entry.context, 'diagram-unknown-lane', 'The event needs a reference to its recorded, declared lane.', 'deploy | 2026-10-01T10:00:00+08:00 | Release | release');
       const lane = authoredLane || 'events'; safeId(lane, entry.context);
       if (!lanes.has(lane)) lanes.set(lane, { id: lane, label: lane });
       context.rowMap[`/events/${spec.events.length}`] = entry.context.line;
@@ -326,6 +338,7 @@ export function compileExplainerDiagram(diagramType, rows, { title, id, line = 1
   } else {
     fail(context, 'diagram-shorthand-unsupported', `The ${diagramType} type uses native JSON instead of shorthand rows.`, `Use spec with diagram_type: ${diagramType}, or source: diagram.${diagramType}.json.`);
   }
+  if (inferredTypes.length) spec.cards = [{dot: 'slate', title: 'Inferred display types · 推断的显示类型', items: inferredTypes}];
   try { validateSchema(diagramType, spec); } catch (error) { rethrowNative(error, context, 'diagram-schema'); }
   return spec;
 }
@@ -337,11 +350,11 @@ function rethrowNative(error, context, reason) {
       .map(message => ({ code: `check/${check.name}`, severity: 'error', message, evidence: check })));
     if (!details.length) details = (error.composition?.issues || []).filter(issue => issue.severity === 'error')
       .map(issue => ({ ...issue, message: issue.code === 'composition/desktop-readability' && issue.projectedFontPx
-        ? `Text "${issue.text}" on ${issue.owner?.kind || 'element'} ${issue.owner?.id || ''} would show at ${issue.projectedFontPx.toFixed(1)}px, below ${issue.minimumProjectedFontPx}px: the diagram is ${Math.round(issue.viewBoxWidth)}px wide and shrinks to ${Math.round(issue.scale * 100)}% on the page. Make it narrower: at most four or five nodes per row, shorter node labels, or phases.`
+        ? `Text "${issue.text}" on ${issue.owner?.kind || 'element'} ${issue.owner?.id || ''} would show at ${issue.projectedFontPx.toFixed(1)}px, below ${issue.minimumProjectedFontPx}px: the diagram is ${Math.round(issue.viewBoxWidth)}px wide and shrinks to ${Math.round(issue.scale * 100)}% on the page. Reflow the layout or split it into linked views that retain every node, label and relationship.`
         : issue.detail || `Native quality check ${issue.code} failed.` }));
   }
   if (details.length) throwDiagnosticError('Native diagram validation failed.', details.map(entry => ({
-    code: `explainer/${reason}`, severity: entry.severity || 'error', message: entry.message,
+    code: `explainer/${reason}`, category: entry.category, severity: entry.severity || 'error', message: entry.message,
     subject: subject({ ...context, line: context.rowMap?.[entry.subject?.path?.match(/^\/[^/]+\/\d+/)?.[0]] || context.line },
       (context.pointer && entry.subject?.path && !context.rowMap) ? `${context.pointer}/spec${entry.subject.path}` : context.pointer || '/',
       { diagramType: context.diagramType, diagram: context.id }),
@@ -462,7 +475,7 @@ export async function prepareExplainerDiagrams(document, { repoRoot, baseDir, qu
     if (block.source !== undefined) originalBytes = readSpec(baseDir, block.source, { ...context, pointer: `${pointer}/source` });
     else {
       try { originalBytes = Buffer.from(JSON.stringify(block.spec)); } catch { fail(context, 'diagram-spec', 'Inline native JSON must be serializable.', 'spec: {schema_version:1,diagram_type:"tree",meta:{title:"Tree"},nodes:[...]}'); }
-      if (originalBytes.length > MAX_SPEC_BYTES) fail(context, 'diagram-source-size', 'Inline diagram JSON exceeds 4 MiB.', 'Use a smaller native JSON specification.');
+      if (originalBytes.length > MAX_SPEC_BYTES) fail(context, 'diagram-source-size', 'Inline diagram JSON exceeds 4 MiB.', 'Split the specification into linked views preserving its complete topology.');
     }
     let original;
     try { original = JSON.parse(originalBytes.toString('utf8')); } catch { fail(context, 'diagram-json', 'Diagram source is not valid JSON.', '{"schema_version":1,"diagram_type":"sequence","meta":{"title":"Request"},"participants":[],"messages":[]}'); }
@@ -485,7 +498,7 @@ export async function prepareExplainerDiagrams(document, { repoRoot, baseDir, qu
       try { check = JSON.parse(checked.stdout); } catch { fail(context, 'diagram-check-receipt', 'Native checker returned no structured receipt.', 'Rerun the native diagram check.'); }
       if (check.ok === false) rethrowNative(check, context, 'diagram-check');
       const bytes = fs.readFileSync(output);
-      if (bytes.length > MAX_DIAGRAM_BYTES) fail(context, 'diagram-artifact-size', 'The native diagram artifact exceeds 32 MiB.', 'Use a smaller native diagram.');
+      if (bytes.length > MAX_DIAGRAM_BYTES) fail(context, 'diagram-artifact-size', 'The native diagram artifact exceeds 32 MiB.', 'Split the diagram into linked views covering all the same facts.');
       const html = bytes.toString('utf8'), svgMatch = html.match(/<svg\b[^>]*\bdata-quality-profile="[^"]*"[^>]*>[\s\S]*?<\/svg>/);
       if (!svgMatch) fail(context, 'diagram-svg', 'The native renderer produced no primary semantic SVG.', 'Use a supported native diagram renderer.');
       const canonicalSvg = svgMatch[0], semantic = semanticOf(canonicalSvg);

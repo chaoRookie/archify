@@ -424,3 +424,10 @@ test('legend entries reserve the width of their rendered label font', async () =
   // Monospace label text advances 0.6em per ASCII character after the swatch.
   assert.ok(second - first >= 14 + 8 + label.length * fontSize * 0.6, JSON.stringify({ first, second, fontSize }));
 });
+
+test('an implicit legend with no canvas space remains readable below a fixed diagram', () => {
+  const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/v1-baseline/cache-miss-request.sequence.json', import.meta.url), 'utf8'));
+  const result = run('sequence', fixture);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.html, /<p class="legend-summary">[^<]*return[^<]*<\/p>/iu);
+});
