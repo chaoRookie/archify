@@ -121,7 +121,7 @@ test('explicit fixed retains historical coordinates and advice preserves authore
   assert.match(explicit.html, /<rect x="19" y="72" width="86"/);
   assert.equal(check(explicit.output).report.composition.sequenceColumnSpace.occupiedRight, 645);
   const compact = summary(check(explicit.output).report);
-  assert.match(compact.layoutReviewRecommendation.repair, /Retain intentional fixed layouts/);
+  assert.match(compact.layoutReviewRecommendation.repair, /Keep the passing fixed candidate/);
   assert.equal(JSON.parse(fs.readFileSync(explicit.input)).meta.column_fit, 'fixed');
 });
 
@@ -246,10 +246,9 @@ test('public finalize preserves a passing fixed candidate and publishes a revers
   const advice = compact.layoutReviewRecommendation;
   assert.equal(advice.action, 'inspect-sequence-width');
   assert.equal(advice.evidence.columnFit, 'fixed');
-  assert.match(advice.repair, /Only when changing that geometry is authorized, save the passing fixed candidate/);
-  assert.match(advice.repair, /set only meta.column_fit to "spread".*complete finalize once with --out-dir <folder>\/width-review/);
-  assert.match(advice.repair, /If that attempt fails, restore the saved candidate and finalize it with --out-dir <folder>\/width-restore/);
-  assert.match(advice.repair, /report the remaining suggestion instead of iterating/);
+  assert.match(advice.repair, /Optional/);
+  assert.match(advice.repair, /meta.column_fit "spread"/);
+  assert.match(advice.repair, /fresh --out-dir/);
   assert.match(advice.repair, /participant order, every message, its y position, labels, notes, sources and canvas dimensions/);
   assert.deepEqual(JSON.parse(fs.readFileSync(compact.evidence.summaryReceipt, 'utf8')).layoutReviewRecommendation, advice,
     'persisted public summary carries the same recovery instructions as stdout');

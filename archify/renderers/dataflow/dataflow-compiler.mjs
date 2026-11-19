@@ -275,7 +275,7 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
         if (node.y < diagramAreaTop) {
           const message = `Node "${node.id}" starts above the readable diagram area — keep y at or above ${diagramAreaTop}.`;
           diagnostics.push({
-            code: 'dataflow/node-above-area',
+            code: 'dataflow/node-above-area', category: 'capability-limit',
             severity: 'error',
             message,
             subject: { diagramType: 'dataflow', node: node.id },
@@ -351,7 +351,7 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
             : ` Raising meta.viewBox[1] to ${requiredViewBoxHeight} would fit the node, but the page then reaches at least ~${raisedOverflow.pageHeightPx}px in the 1440x900 viewport, so the raise cannot stand on its own — compact the node instead.`;
           const message = `Node "${node.id}" exceeds the readable diagram area — ${extent}.${raiseClause}`;
           diagnostics.push({
-            code: 'dataflow/node-below-area',
+            code: 'dataflow/node-below-area', category: 'capability-limit',
             severity: 'error',
             message,
             subject: { diagramType: 'dataflow', node: node.id },
@@ -371,7 +371,7 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
         }
         const estLabelW = textUnits(node.label) * 6.2;
         if (estLabelW > node.width + 6) {
-          problems.push(`Label "${node.label}" (~${Math.round(estLabelW)}px) is wider than component "${node.id}" (${node.width}px) — shorten the label or increase node.width.`);
+          problems.push(`Label "${node.label}" (~${Math.round(estLabelW)}px) is wider than component "${node.id}" (${node.width}px) — increase node.width to fit the full label.`);
         }
         const brandRailProblem = brandTopRailProblem(node, node.width, 8);
         if (brandRailProblem) problems.push(brandRailProblem);
@@ -385,7 +385,7 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
           if (!value) continue;
           const minimumW = minimumNodeTextWidth(value, minimum);
           if (minimumW > availableTextW) {
-            problems.push(`${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but node "${node.id}" provides ${availableTextW}px — shorten the ${field.toLowerCase()} or increase node.width.`);
+            problems.push(`${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but node "${node.id}" provides ${availableTextW}px — increase node.width to fit the full ${field.toLowerCase()}.`);
           }
         }
       }
@@ -396,35 +396,19 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
           const a = nodes.get(nodeList[i].id);
           const b = nodes.get(nodeList[j].id);
           if (rectsOverlap(a, b, 10)) {
-            problems.push(`Nodes "${a.id}" and "${b.id}" are less than 10px apart — move one to another stage/row or adjust yOffset.`);
+            problems.push(`Nodes "${a.id}" and "${b.id}" are less than 10px apart — choose a free row in the same stage or adjust yOffset.`);
           }
         }
       }
 
       const flowList = asArray(dataflow.flows);
-      const stageById = new Map(asArray(dataflow.nodes).map((node) => [node.id, node.stage]));
       for (const flow of flowList) {
         const flowIndex = flowList.indexOf(flow);
         for (const [field, endpoint] of [['from', 'source'], ['to', 'target']]) {
           if (nodes.has(flow[field])) continue;
           const problem = `Flow "${flow.label || flow[field]}" references unknown ${endpoint} "${flow[field]}".`;
-          const anchorStage = stageById.get(flow[field === 'from' ? 'to' : 'from']);
-          const anchorId = flow[field === 'from' ? 'to' : 'from'];
-          const stageDelta = (id) => (anchorStage === undefined || stageById.get(id) === undefined
-            ? 0
-            : field === 'to'
-              ? stageById.get(id) - anchorStage
-              : anchorStage - stageById.get(id));
-          const candidates = [...stageById.keys()]
-            .filter((id) => id !== anchorId)
-            .sort((a, b) => {
-              const da = stageDelta(a);
-              const db = stageDelta(b);
-              const forwardDiff = (db > 0) - (da > 0);
-              return forwardDiff !== 0 ? forwardDiff : da - db;
-            });
           diagnostics.push({
-            code: 'dataflow/unknown-endpoint', severity: 'error', message: problem,
+            code: 'dataflow/unknown-endpoint', category: 'fact-error', severity: 'error', message: problem,
             subject: {
               diagramType: 'dataflow',
               flow: flow.id ?? null,
@@ -432,12 +416,12 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
               from: flow.from,
               to: flow.to,
             },
-            evidence: { endpoint, unknownNodeId: flow[field], availableNodeIds: candidates },
-            supportedFixes: candidates.slice(0, 3).map((id) => `set /flows/${flowIndex}/${field} to verified node id "${id}"`),
+            evidence: { endpoint, unknownNodeId: flow[field], availableNodeIds: [...nodes.keys()] },
+            supportedFixes: ['Trace this relationship in the source and declare or reference its actual endpoint.'],
           });
           problems.push(problem);
         }
-        if (!flow.label) problems.push(`Flow "${flow.from}" -> "${flow.to}" must include a short data label.`);
+        if (!flow.label) problems.push(`Flow "${flow.from}" -> "${flow.to}" must name the data it actually carries.`);
         if (nodes.has(flow.from) && nodes.has(flow.to)) {
           const routed = pathFor(flow);
           const [start, end] = [routed.points[0], routed.points[routed.points.length - 1]];
@@ -474,7 +458,7 @@ export function compileDataflow({ dataflow, sourceEvidence, qualityProfile: requ
         diagramType: 'dataflow',
         relationCollection: 'flows',
         obstacleKind: 'node',
-        routeHint: 'adjust fromSide/toSide, set route/via or channelX/channelY, or move the node to another stage/row'
+        routeHint: 'adjust fromSide/toSide, set route/via or channelX/channelY, or give the node more space within its actual stage'
       }));
       problems.push(...cleanCrossingProblems({
         relations: dataflow.flows,

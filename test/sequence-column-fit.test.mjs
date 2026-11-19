@@ -137,7 +137,6 @@ test('the authoring contract explains automatic spread and explicit geometry com
   assert.match(skill, /use `spread` when a wide viewBox leaves unused horizontal space or meaningful labels need width/);
   assert.match(rendererReadme, /Use `"spread"` when a wide/);
   assert.match(rendererReadme, /default to `meta\.column_fit: "spread"`, whether or not\s+`meta\.viewBox` is supplied/);
-  assert.match(rendererReadme, /try `meta\.column_fit: "spread"` before shortening/);
 });
 
 test('message names use readable primary type with a plate wide enough for the same text', () => {
@@ -357,7 +356,7 @@ test('automatic spread canvas widens for participant labels up to the readable w
     'even the entire bounded row cannot hold these uniform boxes with real gutters and margins');
   const crowded = renderOutcome(doc);
   assert.notEqual(crowded.code, 0);
-  assert.match(crowded.stderr, /shorten it to at most \d+ text units[^]*keep meta\.viewBox omitted/);
+  assert.match(crowded.stderr, /cannot widen further[^]*every participant name and exchange in order/);
 });
 
 function sevenParticipantCapacity() {
@@ -489,7 +488,7 @@ test('a widened automatic canvas reports sublabels at the size that stays readab
     assert.equal(diagnostic.subject.path, '/participants/6/sublabel');
     assert.ok(diagnostic.evidence.requiredWidth > diagnostic.evidence.availableWidth);
     assert.ok(diagnostic.evidence.minimumFontPx > 6);
-    assert.match(diagnostic.supportedFixes[0], /preserving its role or protocol/);
+    assert.match(diagnostic.supportedFixes[0], /keep the full sublabel with this participant/);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

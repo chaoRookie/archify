@@ -252,7 +252,7 @@ const CASES = [
     ['exceeds the segment frame\'s available width', 'increase meta.viewBox[0]']],
   ['sequence: participant sublabel wider than its legible minimum', 'sequence',
     (d) => { d.participants[0].sublabel = 'This supporting sentence is far too long for one sequence participant'; },
-    ['sequence/participant-sublabel-overflow', 'Sublabel', 'legible', 'shorten the sublabel']],
+    ['sequence/participant-sublabel-overflow', 'Sublabel', 'legible', 'full sublabel']],
 
   // ---- dataflow layout rules ----
   ['dataflow: flow missing label', 'dataflow',
@@ -1280,7 +1280,7 @@ test('sequence: showcase rejects a message label that leaves the canvas', () => 
   assert.notEqual(code, 0, `expected non-zero exit; stderr:\n${stderr}`);
   assert.match(stderr, /\[composition\/label-canvas-containment\] showcase sequence label ".*" on messages\[0\]/);
   assert.match(stderr, /extends past the left edge by 99\.2px .*viewBox 1080x580/);
-  assert.match(stderr, /shorten the label, reorder participants, or enlarge meta\.viewBox/);
+  assert.match(stderr, /give the full label more space between participants or enlarge meta\.viewBox/);
 });
 
 // An auto canvas is derived geometry, so it has to cover the label rects the
@@ -1883,6 +1883,17 @@ test('architecture: standard keeps an ambiguous corridor renderable for repair',
   assert.equal(code, 0, stderr);
 });
 
+test('dataflow reports the five-stage rendering limit without dropping a stage', () => {
+  const diagram = load('dataflow');
+  diagram.stages = Array.from({ length: 6 }, (_, index) => ({ label: `Phase ${index + 1}` }));
+  const { code, result } = validateCli('dataflow', diagram);
+  assert.equal(code, 1);
+  const limit = result.diagnostics.find(entry => entry.subject.path === '/stages');
+  assert.equal(limit.category, 'capability-limit');
+  assert.equal(limit.evidence.limit, 5);
+  assert.match(limit.supportedFixes.join(' '), /preserve|retain|complete input/i);
+});
+
 test('architecture: route rhythm keeps short segments advisory', () => {
   const base = {
     schema_version: 1,
@@ -2040,7 +2051,7 @@ test('dataflow: Clean Flow Gate rejects a flow through an unrelated node', () =>
   assert.notEqual(code, 0, `expected non-zero exit; stderr:\n${stderr}`);
   assert.match(stderr, /\[clean-flow\/edge-through-node\] dataflow flows\[0\] id "direct"/);
   assert.match(stderr, /crosses node "middle"/);
-  assert.match(stderr, /stage\/row/);
+  assert.match(stderr, /within its actual stage/);
 });
 
 test('sequence: lifelines and activation bars remain intentional pass-through geometry', () => {
@@ -2118,7 +2129,7 @@ test('sequence: segment label exceeding segment frame available width fails layo
 
   const { code, stderr } = render('sequence', d);
   assert.equal(code, 1);
-  assert.match(stderr, /Segment "Phase 1: Dual-Certificate mTLS Handshake & Distributed Token Verification Protocol NegotiationPhase 1: Dual-Certificate mTLS Handshake & Distributed Token Verification Protocol Negotiation" label \(~992px\) exceeds the segment frame's available width \(716px\) — shorten the label or increase meta\.viewBox\[0\] to at least 1096\./);
+  assert.match(stderr, /Segment "Phase 1: Dual-Certificate mTLS Handshake & Distributed Token Verification Protocol NegotiationPhase 1: Dual-Certificate mTLS Handshake & Distributed Token Verification Protocol Negotiation" label \(~992px\) exceeds the segment frame's available width \(716px\) — increase meta\.viewBox\[0\] to at least 1096\./);
 
   // Remediating by increasing viewBox[0] to the suggested minimum allows it to pass cleanly
   d.meta.viewBox[0] = 1096;
@@ -2142,7 +2153,7 @@ test('sequence: segment label boundary containment within canvas vs segment fram
   dExceed.segments[0].label = 'A'.repeat(136);
   const resExceed = render('sequence', dExceed);
   assert.equal(resExceed.code, 1, 'label exceeding segment frame must fail even if within canvas');
-  assert.match(resExceed.stderr, /label \(~721px\) exceeds the segment frame's available width \(716px\) — shorten the label or increase meta\.viewBox\[0\] to at least 826\./);
+  assert.match(resExceed.stderr, /label \(~721px\) exceeds the segment frame's available width \(716px\) — increase meta\.viewBox\[0\] to at least 826\./);
 
   // 2. Exact-fit case at the frame's right edge (56 + 716 = 772 === 820 - 48)
   const dExact = load('sequence');

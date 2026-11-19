@@ -561,11 +561,11 @@ function validateSequence() {
   }
 
   for (const participant of participants.values()) {
-    const participantIndex = asArray(sequence.participants).findIndex((entry) => entry.id === participant.id);
+    const participantIndex = participantIndexById.get(participant.id);
     const participantProblem = (field, message, evidence, supportedFixes) => {
       problems.push(message);
       diagnostics.push({
-        code: `sequence/participant-${field}-overflow`, severity: 'error', message,
+        code: `sequence/participant-${field}-overflow`, category: 'capability-limit', severity: 'error', message,
         subject: { diagramType: 'sequence', nodeId: participant.id, path: `/participants/${participantIndex}/${field}` },
         evidence: { viewBoxWidth: viewBox[0], participantWidth: layout.participantW, ...evidence },
         supportedFixes,
@@ -573,11 +573,10 @@ function validateSequence() {
     };
     const estLabelW = textUnits(participant.label) * 6.8;
     if (estLabelW > layout.participantW + 6) {
-      const message = automaticWidth
-        ? `Label "${participant.label}" (~${Math.round(estLabelW)}px) is wider than component "${participant.id}" — shorten it to at most ${Math.floor((layout.participantW + 6) / 6.8)} text units (CJK counts 2; ${participantBoxWidthNote}).`
-        : `Label "${participant.label}" (~${Math.round(estLabelW)}px) is wider than component "${participant.id}" (${layout.participantW}px) — shorten the label or widen the participant box.`;
+      const message = `Label "${participant.label}" (~${Math.round(estLabelW)}px) is wider than component "${participant.id}" (${layout.participantW}px). ${participantBoxWidthNote}.`;
       participantProblem('label', message, { text: participant.label, requiredWidth: estLabelW, availableWidth: layout.participantW + 6 },
-        ['shorten the participant label while preserving its role', ...(columnFit === 'fixed' ? ['set meta.column_fit to "spread" if fixed coordinates are not required'] : [])]);
+        [...(columnFit === 'fixed' ? ['use spread columns if the fixed positions can change'] : []),
+          'use linked views or a message table that keeps every participant name and exchange in order']);
     }
     const brandRailProblem = brandTopRailProblem(participant, layout.participantW, 8, 'Participant');
     if (brandRailProblem) problems.push(brandRailProblem);
@@ -590,28 +589,22 @@ function validateSequence() {
         const minimumDescription = readableAutomaticSublabel
           ? `${readableSublabelMinimum}px minimum that stays readable on this ${viewBox[0]}px canvas`
           : `${readableSublabelMinimum}px legible minimum`;
-        const message = `Sublabel "${participant.sublabel}" needs ~${Math.ceil(minimumW)}px at the ${minimumDescription}, but participant "${participant.id}" provides ${availableTextW}px — shorten the sublabel (${participantBoxWidthNote}).`;
+        const message = `Sublabel "${participant.sublabel}" needs ~${Math.ceil(minimumW)}px at the ${minimumDescription}, but participant "${participant.id}" provides ${availableTextW}px (${participantBoxWidthNote}).`;
         participantProblem('sublabel', message, { text: participant.sublabel, requiredWidth: minimumW, availableWidth: availableTextW, minimumFontPx: readableSublabelMinimum },
-          ['shorten the participant sublabel while preserving its role or protocol; move supplementary detail into a card', ...(columnFit === 'fixed' ? ['set meta.column_fit to "spread" if fixed coordinates are not required'] : [])]);
+          ['keep the full sublabel with this participant in a card or message table', ...(columnFit === 'fixed' ? ['set meta.column_fit to "spread" if fixed coordinates are not required'] : [])]);
       }
     }
   }
 
   const messageList = asArray(sequence.messages);
-  const participantList = asArray(sequence.participants);
-  const participantOrder = new Map(participantList.map((p, index) => [p.id, index]));
+
   for (const message of messageList) {
     const messageIndex = messageList.indexOf(message);
     for (const [field, endpoint] of [['from', 'source'], ['to', 'target']]) {
       if (participants.has(message[field])) continue;
       const problem = `Message "${message.label}" references unknown ${endpoint} "${message[field]}".`;
-      const otherField = field === 'from' ? 'to' : 'from';
-      const anchorOrder = participantOrder.get(message[otherField]) ?? 0;
-      const candidates = [...participantOrder.keys()]
-        .filter((id) => id !== message[otherField])
-        .sort((a, b) => Math.abs(participantOrder.get(a) - anchorOrder) - Math.abs(participantOrder.get(b) - anchorOrder));
       diagnostics.push({
-        code: 'sequence/unknown-endpoint', severity: 'error', message: problem,
+        code: 'sequence/unknown-endpoint', category: 'fact-error', severity: 'error', message: problem,
         subject: {
           diagramType: 'sequence',
           message: message.label ?? null,
@@ -619,8 +612,8 @@ function validateSequence() {
           from: message.from,
           to: message.to,
         },
-        evidence: { endpoint, unknownNodeId: message[field], availableNodeIds: candidates },
-        supportedFixes: candidates.slice(0, 3).map((id) => `set /messages/${messageIndex}/${field} to verified node id "${id}"`),
+        evidence: { endpoint, unknownNodeId: message[field], availableNodeIds: [...participantIndexById.keys()] },
+        supportedFixes: ['Trace this relationship in the source and declare or reference its actual endpoint.'],
       });
       problems.push(problem);
     }
@@ -632,7 +625,7 @@ function validateSequence() {
       if (message.from === message.to) {
         const problem = `Message "${message.label}" is a self-message on participant "${message.from}"; this Sequence renderer supports only messages between distinct participants. Participant spacing cannot repair it. Preserve the internal step's meaning and order in a supported representation such as a note on a real message or a card; do not invent a participant.`;
         diagnostics.push({
-          code: 'sequence/self-message-unsupported', severity: 'error', message: problem,
+          code: 'sequence/self-message-unsupported', category: 'capability-limit', severity: 'error', message: problem,
           subject: {
             diagramType: 'sequence',
             message: message.label,
@@ -647,11 +640,11 @@ function validateSequence() {
           },
           evidence: {
             participant: message.from,
-            participantPath: `/participants/${participantOrder.get(message.from)}`,
+            participantPath: `/participants/${participantIndexById.get(message.from)}`,
             y: message.y,
             supportedMessageGeometry: 'horizontal-between-distinct-participants',
           },
-          supportedFixes: [],
+          supportedFixes: ['Keep the internal action with its participant in a note on the surrounding real exchange, or use ordered text for a standalone action.'],
         });
         problems.push(problem);
       } else {
@@ -738,7 +731,7 @@ function validateSequence() {
   for (let i = 0; i < labelRects.length; i += 1) {
     for (let j = i + 1; j < labelRects.length; j += 1) {
       if (rectsOverlap(labelRects[i], labelRects[j], -2)) {
-        problems.push(`Labels "${labelRects[i].label}" and "${labelRects[j].label}" overlap — spread their message y values or shorten the labels.`);
+        problems.push(`Labels "${labelRects[i].label}" and "${labelRects[j].label}" overlap — spread their message y values while preserving order.`);
       }
     }
   }
@@ -750,7 +743,7 @@ function validateSequence() {
     diagramType: 'sequence',
     relationCollection: 'messages',
     profile: sequence.meta?.quality_profile,
-    routeHint: 'spread the message y values, shorten the label, or reorder participants so the adjacent route stays visible'
+    routeHint: 'spread the message y values while preserving order so the adjacent route stays visible'
   }));
   problems.push(...cleanLabelCanvasContainmentProblems({
     labels: labelRects,
@@ -758,7 +751,7 @@ function validateSequence() {
     diagramType: 'sequence',
     relationCollection: 'messages',
     profile: sequence.meta?.quality_profile,
-    routeHint: 'shorten the label, reorder participants, or enlarge meta.viewBox',
+    routeHint: 'give the full label more space between participants or enlarge meta.viewBox',
   }));
 
   // A wrapped note keeps every character (#676), so a note that still reaches a
@@ -767,7 +760,7 @@ function validateSequence() {
   // accepting existing diagrams.
   const report = (problem, detail) => {
     problems.push(problem);
-    diagnostics.push({ severity: 'error', message: problem, ...detail });
+    diagnostics.push({ category: 'capability-limit', severity: 'error', message: problem, ...detail });
   };
   const bounds = (rect) => ({
     x: Math.round(rect.x * 10) / 10,
@@ -797,7 +790,7 @@ function validateSequence() {
         const fix = sequence.meta?.viewBox
           ? `set /meta/viewBox/1 to ${requiredHeight}`
           : `set /meta/viewBox to [${viewBox[0]}, ${requiredHeight}]`;
-        report(`Note on message "${message.label}" wraps to ${lines} and ends at y=${bottom}, below the canvas content limit y=${noteFloor} — set meta.viewBox[1] to at least ${requiredHeight}, move the message up, or shorten the note.`, {
+        report(`Note on message "${message.label}" wraps to ${lines} and ends at y=${bottom}, below the canvas content limit y=${noteFloor} — set meta.viewBox[1] to at least ${requiredHeight}, or move the message and its note together while preserving order.`, {
           code: 'sequence/note-canvas-limit',
           subject,
           evidence: { lines: note.lines.length, note: bounds(ownRect), canvasLimitY: noteFloor, viewBoxHeight: viewBox[1], requiredViewBoxHeight: requiredHeight },
@@ -819,7 +812,7 @@ function validateSequence() {
       if (!blocker) return;
       const requiredY = Math.ceil(note.bottom + 22);
       const blockerPath = `/messages/${blocker.index}/y`;
-      report(`Note on message "${message.label}" wraps to ${lines} (down to y=${bottom}) and reaches message "${blocker.message.label}" at y=${blocker.message.y} — move "${blocker.message.label}" and later messages down so it sits at y=${requiredY} or below, or shorten the note.`, {
+      report(`Note on message "${message.label}" wraps to ${lines} (down to y=${bottom}) and reaches message "${blocker.message.label}" at y=${blocker.message.y} — move "${blocker.message.label}" and later messages down so it sits at y=${requiredY} or below, preserving the note and message order.`, {
         code: 'sequence/note-overlap',
         subject,
         evidence: {
@@ -849,14 +842,14 @@ function validateSequence() {
         const cut = asArray(sequence.messages).filter((message) => typeof message.y === 'number'
           && Math.abs(border - message.y) < 4);
         for (const message of cut) {
-          const problem = `Segment "${segment.label}" ${edge === 'from' ? 'top' : 'bottom'} edge at y ${border} runs along message "${message.label}" (arrow at y ${message.y}) — move the edge to at least ${message.y + 4} to leave the message above it, or to at most ${message.y - 4} to leave it below.`;
+          const problem = `Segment "${segment.label}" ${edge === 'from' ? 'top' : 'bottom'} edge at y ${border} runs along message "${message.label}" (arrow at y ${message.y}) — move the edge to at least ${message.y + 4} to leave the message above it, or to at most ${message.y - 4} to leave it below, according to its evidenced phase.`;
           const segmentIndex = asArray(sequence.segments).indexOf(segment);
           problems.push(problem);
           diagnostics.push({
-            code: 'sequence/segment-message-border-run', severity: 'error', message: problem,
+            code: 'sequence/segment-message-border-run', category: 'capability-limit', severity: 'error', message: problem,
             subject: { diagramType: 'sequence', collection: 'segments', index: segmentIndex, path: `/segments/${segmentIndex}/${edge}` },
             evidence: { segmentLabel: segment.label, edge, borderY: border, messageIndex: messageList.indexOf(message), messageLabel: message.label, messageY: message.y, minimumClearancePx: 4 },
-            supportedFixes: [`set /segments/${segmentIndex}/${edge} to at least ${message.y + 4} to leave the message above it`, `set /segments/${segmentIndex}/${edge} to at most ${message.y - 4} to leave the message below it`],
+            supportedFixes: [`preserve the evidenced phase of "${message.label}" and leave at least 4px between its arrow and /segments/${segmentIndex}/${edge}`],
           });
         }
       }
@@ -865,13 +858,13 @@ function validateSequence() {
     for (const other of asArray(sequence.segments)) {
       if (other === segment || asArray(sequence.segments).indexOf(other) < asArray(sequence.segments).indexOf(segment)) continue;
       if (rectsOverlap(labelBox, segmentLabelBox(other), 0)) {
-        problems.push(`Segment labels "${segment.label}" and "${other.label}" overlap — leave more room between the segments' messages near their shared border, or shorten a label.`);
+        problems.push(`Segment labels "${segment.label}" and "${other.label}" overlap — leave more room between the segments' messages near their shared border while preserving phase membership.`);
       }
     }
     const availableWidth = Math.max(0, viewBox[0] - 48 - labelBox.x);
     if (labelBox.x + labelBox.width > viewBox[0] - 48) {
       const requiredWidth = Math.ceil(labelBox.x + labelBox.width + 48);
-      problems.push(`Segment "${segment.label}" label (~${Math.round(labelBox.width)}px) exceeds the segment frame's available width (${availableWidth}px) — shorten the label or increase meta.viewBox[0] to at least ${requiredWidth}.`);
+      problems.push(`Segment "${segment.label}" label (~${Math.round(labelBox.width)}px) exceeds the segment frame's available width (${availableWidth}px) — increase meta.viewBox[0] to at least ${requiredWidth}.`);
     }
     // Segment labels are drawn above messages and notes and step up to stay
     // clear of them; in showcase, a label left covering any of them fails.
@@ -882,6 +875,7 @@ function validateSequence() {
       for (let distance = 1; distance <= 300 && clearFrom === null; distance += 1) {
         for (const candidate of [segment.from + distance, segment.from - distance]) {
           if (candidate < layout.topY || candidate >= segment.to) continue;
+          if (messageList.some(message => message.y <= segment.to && (message.y >= segment.from) !== (message.y >= candidate))) continue;
           if (!segmentLabelBlocker({ ...segment, from: candidate })) {
             clearFrom = candidate;
             break;
@@ -889,7 +883,7 @@ function validateSequence() {
         }
       }
       const fromPath = `/segments/${segmentIndex}/from`;
-      report(`Segment "${segment.label}" label would cover the ${covered.kind} of message "${covered.message.label}" — move the segment start (from: ${segment.from}) or that message so they are further apart${covered.kind === 'note' ? ', or shorten the note' : ''}.`, {
+      report(`Segment "${segment.label}" label would cover the ${covered.kind} of message "${covered.message.label}" — move the segment start (from: ${segment.from}) or that message while preserving message order and phase membership.`, {
         code: 'sequence/segment-label-overlap',
         subject: { diagramType: 'sequence', segment: segment.label ?? null, path: fromPath },
         evidence: {
@@ -910,7 +904,7 @@ function validateSequence() {
   const lastParticipant = asArray(sequence.participants)[asArray(sequence.participants).length - 1];
   if (lastParticipant && participants.get(lastParticipant.id).cx + layout.participantW / 2 > viewBox[0] - 40) {
     const requiredWidth = Math.ceil(participants.get(lastParticipant.id).cx + layout.participantW / 2 + 40);
-    problems.push(`Participants exceed viewBox width — set meta.viewBox[0] to at least ${requiredWidth} or remove a participant.`);
+    problems.push(`Participants exceed viewBox width — set meta.viewBox[0] to at least ${requiredWidth} to preserve every participant.`);
   }
 
   // Showcase must not silently drop the implicit legend because late content

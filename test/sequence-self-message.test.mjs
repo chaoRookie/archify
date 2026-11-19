@@ -45,7 +45,8 @@ for (const quality of ['standard', 'showcase']) {
     assert.equal(diagnostic.evidence.participantPath, '/participants/1');
     assert.equal(diagnostic.evidence.y, 260);
     assert.equal(diagnostic.evidence.supportedMessageGeometry, 'horizontal-between-distinct-participants');
-    assert.deepEqual(diagnostic.supportedFixes, []);
+    assert.equal(diagnostic.category, 'capability-limit');
+    assert.match(diagnostic.supportedFixes.join(' '), /internal action with its participant/);
     assert.match(diagnostic.message, /meaning and order/);
     assert.doesNotMatch(result.stdout, /spans 0px|give its participants more column distance/);
     assert.deepEqual(JSON.parse(fs.readFileSync(input, 'utf8')), doc, 'rejection preserves authored semantics');
