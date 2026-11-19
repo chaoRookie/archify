@@ -493,11 +493,11 @@
       const diagram = diagrams[block.id], nodes = diagram?.semantic?.nodes || [], edges = diagram?.semantic?.edges || [];
       if (diagram?.diagramType !== 'workflow' || walked.has(block.id) || nodes.length < 3) return;
       const preview = block.querySelector('.diagram-preview');
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'walk-start'; button.textContent = `▶ ${words.walkFlow}`; button.setAttribute('aria-pressed','false');
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'walk-start'; button.textContent = `▶ ${say('Explore nodes in authored order','按编排顺序查看节点')}`; button.setAttribute('aria-pressed','false');
       block.querySelector('.diagram-title')?.after(button);
       button.addEventListener('click',()=>walk(button,nodes,index=>{
         if (index < 0) { spotlight(preview); return; }
-        const node = nodes[index], into = edges.filter(edge=>edge.to === node.id && (index === 0 || nodes.slice(0,index).some(seen=>seen.id === edge.from)));
+        const node = nodes[index], into = edges.filter(edge=>edge.to === node.id);
         spotlight(preview,[node.id,...into.map(edge=>edge.from)],into.map(edge=>edge.id));
         const target = preview.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`), box = target?.getBoundingClientRect();
         if (box && (box.top < 0 || box.bottom > innerHeight - 80)) target.scrollIntoView({block:'center',behavior:'smooth'});

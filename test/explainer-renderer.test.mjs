@@ -229,3 +229,18 @@ test('renderer: Windows cross-volume source locations are omitted instead of exp
   const frozen=payload(tree,'archify-explainer-prepared'),manifest=JSON.parse(text(find(tree,'explainer-manifest')));
   assert.equal(frozen.sourcePath,null);assert.equal(frozen.baseDir,null);assert.equal(frozen.dependencies[0].path,null);assert.equal(manifest.diagnostics[0].subject.input,null);
 });
+
+test('a reader can distinguish the origin of steps from playback timing and read all reasons', () => {
+  for (const [origin, label] of [[undefined, 'unspecified'], ['traced', 'Recorded execution'], ['derived', 'Derived from source'], ['illustrative', 'Illustration']]) {
+    const document = fixture();
+    document.answer.reasons = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
+    for (const block of document.panels[0].blocks.filter(block => ['steps', 'diagram'].includes(block.type))) block.provenance = origin;
+    const page = parse(renderExplainer(document, resources()));
+    for (const id of ['steps', 'native-diagram']) {
+      const caption = text(find(page, id));
+      assert.ok(caption.includes(label));
+      assert.match(caption, /presentation time/);
+    }
+    assert.match(text(find(page, 'answer')), /Fifth/);
+  }
+});

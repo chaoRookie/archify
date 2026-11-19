@@ -209,7 +209,7 @@ relationship IDs within the mode's relationship collection.
 All five modes support opt-in, revision-pinned repository evidence.
 `meta.repository` names the repository URL and full commit SHA, with optional
 `provider` (`github`, `gitee`, or `gitlab`) and `link_mode` (`web` or `local-only`; see the
-authoring contract); a node may carry one to three `sources` with repo-relative POSIX paths, optional line
+authoring contract); a node may carry one or more `sources` with repo-relative POSIX paths, optional line
 ranges, and optional labels. Sources are authored on the mode's own node
 collection — Architecture `components`, Workflow and Data Flow `nodes`,
 Sequence `participants`, Lifecycle `states` — and the verified payload is keyed

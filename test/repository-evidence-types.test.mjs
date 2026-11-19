@@ -326,11 +326,10 @@ for (const [typeIndex, shape] of TYPES.entries()) {
     const nodeIndex = diagram[collection].findIndex(node => node.id === first);
     const node = diagram[collection][nodeIndex];
     diagram.meta.repository = { url: 'https://github.com/example/evidence-repo', revision: 'a'.repeat(40) };
-    node.sources = [{ path: 'src/router.js' }];
+    node.sources = Array.from({ length: 4 }, (_, i) => ({ path: `src/module-${i}.js` }));
     assert.doesNotThrow(() => validateSchema(type, diagram));
     const cliData = type === 'architecture' ? fixture(t, shape) : null;
     for (const [sources, pattern, code, sourceSuffix] of [
-      [Array.from({ length: 4 }, () => ({ path: 'src/router.js' })), /must NOT have more than 3 items/, 'schema/maxItems', ''],
       [[{ path: 'src/router.js', branch: 'main' }], /must NOT have additional properties/, 'schema/additionalProperties', '/0'],
     ]) {
       node.sources = sources;

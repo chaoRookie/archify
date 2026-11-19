@@ -185,3 +185,12 @@ test('a badge-only comparison cell and a route written in the node column are ac
   assert.deepEqual(document.panels[0].blocks[0].rows[0].cells[0],{text:'Drop',assessment:'bad',verdict:'Drop'});
   assert.deepEqual(document.panels[0].blocks[2].items[0].target,{diagram:'flow',route:['a','b']});
 });
+
+test('walkthrough provenance survives shorthand and rejects an unknown origin', () => {
+  const input = draft('@steps id=walk provenance=traced\n| read | Read file |\n\n@sequence id=calls provenance=derived\n| Client | API | Request |');
+  const {document} = parse(input);
+  assert.deepEqual(document.panels[0].blocks.map(block => block.provenance), ['traced', 'derived']);
+  assert.equal(validateExplainer(document).ok, true);
+  document.panels[0].blocks[0].provenance = 'guess';
+  assert.equal(validateExplainer(document).ok, false);
+});

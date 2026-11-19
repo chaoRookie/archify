@@ -86,6 +86,14 @@ export function renderExplainer(document, options = {}) {
       case 'image': { const asset = assets[block.id]; if (!asset?.dataUrl || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(asset.dataUrl)) unavailable(block,`Missing contained image: ${block.id}`); body = `<figure class="image"><img src="${escape(asset.dataUrl)}" alt="${escape(block.alt)}">${block.caption ? `<figcaption>${i(block.caption)}</figcaption>` : ''}</figure>`; break; }
       default: throw new Error(`Unsupported explainer block: ${block.type}`);
     }
+    if (block.type === 'steps' || block.type === 'diagram') {
+      const labels = english
+        ? {traced: 'Recorded execution', derived: 'Derived from source', illustrative: 'Illustration'}
+        : {traced: '实际运行记录', derived: '根据源码推演', illustrative: '演示示例'};
+      const origin = labels[block.provenance] || (english ? 'Source of sequence unspecified' : '未注明过程出处');
+      const timing = english ? 'Playback uses presentation time.' : '播放按演示节奏推进。';
+      body += `<p class="fine walk-provenance">${origin} · ${timing}</p>`;
+    }
     return `<div class="block block-${escape(block.type)}" id="${escape(block.id)}" data-block-type="${escape(block.type)}">${body}</div>`;
   }
   const scopeHtml = scope => { const parts = scopeParts(scope); return parts.length > 1 ? parts.map(part=>`<span class="scope-chip">${inline(part)}</span>`).join('') : `<span>${inline(scope)}</span>`; };

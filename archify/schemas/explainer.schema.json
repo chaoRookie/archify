@@ -69,8 +69,7 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/text"
-          },
-          "maxItems": 4
+          }
         },
         "scope": {
           "$ref": "#/$defs/text"
@@ -447,6 +446,9 @@
           },
           "minItems": 1,
           "maxItems": 500
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
         }
       }
     },
@@ -519,6 +521,9 @@
           },
           "minItems": 1,
           "maxItems": 500
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
         }
       },
       "oneOf": [
@@ -922,6 +927,13 @@
           }
         }
       }
+    },
+    "provenance": {
+      "enum": [
+        "traced",
+        "derived",
+        "illustrative"
+      ]
     }
   }
 }
