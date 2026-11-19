@@ -10,6 +10,7 @@
       var chip = document.getElementById('focus-chip');
       var label = document.getElementById('focus-label');
       var detail = document.getElementById('focus-detail');
+      var explain = document.getElementById('focus-explain');
       var kind = document.getElementById('focus-kind');
       var context = document.getElementById('focus-context');
       var tag = document.getElementById('focus-tag');
@@ -374,8 +375,30 @@
         });
         evidence.hidden = false;
       }
+      function renderExplain(value) {
+        if (!explain) return;
+        explain.textContent = '';
+        var text = value == null ? '' : String(value).trim();
+        explain.hidden = !text;
+        text.split(/\n+/).forEach(function (line) {
+          line = line.trim();
+          if (!line) return;
+          var p = document.createElement('p');
+          var cut = line.indexOf('：');
+          if (cut > 0 && cut <= 10) {
+            var head = document.createElement('b');
+            head.textContent = line.slice(0, cut + 1);
+            p.appendChild(head);
+            p.appendChild(document.createTextNode(line.slice(cut + 1)));
+          } else {
+            p.textContent = line;
+          }
+          explain.appendChild(p);
+        });
+      }
       function renderPassport(id, node) {
         setPassportValue(detail, node.getAttribute('data-node-sublabel'));
+        renderExplain(node.getAttribute('data-node-explain'));
         setPassportValue(kind, viewerKindLabel(node.getAttribute('data-node-kind') || 'node'));
         setPassportValue(context, node.getAttribute('data-node-context'));
         setPassportValue(tag, node.getAttribute('data-node-tag'));

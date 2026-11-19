@@ -294,6 +294,9 @@
           "sublabel": {
             "type": "string"
           },
+          "explain": {
+            "type": "string"
+          },
           "tag": {
             "type": "string"
           },

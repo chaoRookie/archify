@@ -1833,6 +1833,22 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       white-space: nowrap;
     }
     .semantic-passport-detail[hidden] { display: none; }
+    .semantic-passport-explain {
+      margin: 0.45rem 0 0.2rem;
+      padding: 0.5rem 0.6rem;
+      max-height: 16rem;
+      overflow-y: auto;
+      border-radius: 0.35rem;
+      background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+      color: var(--text);
+      font-size: 0.75rem;
+      line-height: 1.6;
+      white-space: normal;
+    }
+    .semantic-passport-explain[hidden] { display: none; }
+    .semantic-passport-explain p { margin: 0 0 0.4rem; }
+    .semantic-passport-explain p:last-child { margin-bottom: 0; }
+    .semantic-passport-explain b { font-weight: 700; }
     .semantic-passport-meta {
       display: flex;
       flex-wrap: wrap;
@@ -5415,6 +5431,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <span class="relationship-lens-eyebrow">{{i18n:viewer.passport.eyebrow}}</span>
             <strong class="relationship-lens-title" id="relationship-lens-title"><span id="focus-label"></span></strong>
             <span class="semantic-passport-detail" id="focus-detail" hidden></span>
+            <div class="semantic-passport-explain" id="focus-explain" hidden></div>
             <div class="semantic-passport-meta" id="focus-passport-meta" aria-label="{{i18n:viewer.passport.metadata}}">
               <span id="focus-kind" data-passport="kind"></span>
               <span id="focus-context" data-passport="context" hidden></span>
@@ -8340,6 +8357,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       var chip = document.getElementById('focus-chip');
       var label = document.getElementById('focus-label');
       var detail = document.getElementById('focus-detail');
+      var explain = document.getElementById('focus-explain');
       var kind = document.getElementById('focus-kind');
       var context = document.getElementById('focus-context');
       var tag = document.getElementById('focus-tag');
@@ -8704,8 +8722,30 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         });
         evidence.hidden = false;
       }
+      function renderExplain(value) {
+        if (!explain) return;
+        explain.textContent = '';
+        var text = value == null ? '' : String(value).trim();
+        explain.hidden = !text;
+        text.split(/\n+/).forEach(function (line) {
+          line = line.trim();
+          if (!line) return;
+          var p = document.createElement('p');
+          var cut = line.indexOf('：');
+          if (cut > 0 && cut <= 10) {
+            var head = document.createElement('b');
+            head.textContent = line.slice(0, cut + 1);
+            p.appendChild(head);
+            p.appendChild(document.createTextNode(line.slice(cut + 1)));
+          } else {
+            p.textContent = line;
+          }
+          explain.appendChild(p);
+        });
+      }
       function renderPassport(id, node) {
         setPassportValue(detail, node.getAttribute('data-node-sublabel'));
+        renderExplain(node.getAttribute('data-node-explain'));
         setPassportValue(kind, viewerKindLabel(node.getAttribute('data-node-kind') || 'node'));
         setPassportValue(context, node.getAttribute('data-node-context'));
         setPassportValue(tag, node.getAttribute('data-node-tag'));

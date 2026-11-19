@@ -1664,6 +1664,22 @@ html[data-preset="blueprint"] .focus-chip { border-radius: 0.3rem; }
   white-space: nowrap;
 }
 .semantic-passport-detail[hidden] { display: none; }
+.semantic-passport-explain {
+  margin: 0.45rem 0 0.2rem;
+  padding: 0.5rem 0.6rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  color: var(--text);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  white-space: normal;
+}
+.semantic-passport-explain[hidden] { display: none; }
+.semantic-passport-explain p { margin: 0 0 0.4rem; }
+.semantic-passport-explain p:last-child { margin-bottom: 0; }
+.semantic-passport-explain b { font-weight: 700; }
 .semantic-passport-meta {
   display: flex;
   flex-wrap: wrap;
