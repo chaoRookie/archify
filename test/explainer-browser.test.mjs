@@ -162,3 +162,11 @@ test('text names light their diagram nodes and walk-throughs step through steps 
   assert.equal(image.type,'image/png');assert.ok(image.size>20000,'the long image carries the rendered page');
  }finally{await browser.close();}
 });
+
+test('an answer without panels stays readable in print and with scripts disabled', {skip: !chrome}, async () => {
+  const {renderExplainer} = await import('../archify/explainer/render.mjs');
+  const document = {...formalDocument(), panels: []};
+  const file = artifact('answer-only', renderExplainer(document));
+  const gate = await runBrowserCheck({artifactPath: file, chromePath: chrome});
+  assert.equal(gate.exitCode, 0, JSON.stringify(gate.receipt.diagnostics));
+});

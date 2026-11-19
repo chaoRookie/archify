@@ -68,11 +68,11 @@ test('explainer prepared bundle cannot follow same-byte draft into a different a
   const result=run(['deliver','explainer',moved,output,'--json'],{ARCHIFY_EXPLAINER_PREPARED:preparedPath});assert.equal(result.status,1);assert.equal(JSON.parse(result.stdout).diagnostics[0].evidence.reason,'draft-path-mismatch');assert.equal(fs.readFileSync(output,'utf8'),'last good');
 });
 
-test('explainer public writing modes warn, reject strict drafts, and permit explicit off',t=>{
+test('explainer public writing modes keep writing suggestions advisory and permit explicit off',t=>{
   const dir=temporary(t),document=fixture();document.panels[0].blocks[0].text='We will perform an analysis of each and every request.';const input=write(dir,document),output=path.join(dir,'result.html');
-  const warning=run(['deliver','explainer',input,output,'--writing','warn','--json']);assert.equal(warning.status,0,warning.stdout+warning.stderr);assert.ok(JSON.parse(warning.stdout).diagnostics.some(d=>d.code.startsWith('explainer/writing-')&&d.severity==='warning'));assert.equal(bundle(output).writingMode,'warn');const previous=fs.readFileSync(output);
+  const warning=run(['deliver','explainer',input,output,'--writing','warn','--json']);assert.equal(warning.status,0,warning.stdout+warning.stderr);assert.ok(JSON.parse(warning.stdout).diagnostics.some(d=>d.code.startsWith('explainer/writing-')&&d.severity==='warning'));assert.equal(bundle(output).writingMode,'warn');
   for(const command of ['validate','deliver','finalize']) {
-    const result=run([command,'explainer',input,...(command==='validate'?[]:[output]),'--writing','strict','--json']);assert.equal(result.status,1,result.stdout+result.stderr);assert.ok(JSON.parse(result.stdout).diagnostics.some(d=>d.code.startsWith('explainer/writing-')&&d.severity==='error'));assert.deepEqual(fs.readFileSync(output),previous);
+    const result=run([command,'explainer',input,...(command==='validate'?[]:[output]),'--writing','strict','--json']);assert.equal(result.status,0,result.stdout+result.stderr);assert.ok(JSON.parse(result.stdout).diagnostics.some(d=>d.code.startsWith('explainer/writing-')&&d.severity==='warning'));
   }
   const disabled=run(['deliver','explainer',input,output,'--writing=off','--json']);assert.equal(disabled.status,0,disabled.stdout+disabled.stderr);assert.equal(bundle(output).writingMode,'off');assert.ok(!(JSON.parse(disabled.stdout).diagnostics||[]).some(d=>d.code.startsWith('explainer/writing-')));
   const native=run(['validate','workflow',input,'--writing','strict','--json']);assert.equal(native.status,2,native.stdout+native.stderr);assert.equal(JSON.parse(native.stdout).diagnostics[0].code,'cli/unsupported-option');
@@ -98,4 +98,14 @@ test('explainer live preview explains the supported delivery path before reading
   assert.match(result.stderr, /Live preview supports the ten diagram types only/);
   assert.match(result.stderr, /finalize explainer/);
   assert.equal(fs.readFileSync(output, 'utf8'), 'last good artifact');
+});
+
+test('a sourced answer can finalize without a supporting panel', t => {
+  const dir = temporary(t);
+  const input = path.join(dir, 'answer.md'), output = path.join(dir, 'answer.html');
+  fs.writeFileSync(input, '# Which command runs tests?\n\nRun `npm test`.[](source:script)\n\n@source script title="Package scripts"');
+  const result = run(['finalize', 'explainer', input, output, '--json']);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(bundle(output).document.panels, []);
+  assert.match(fs.readFileSync(output, 'utf8'), /Package scripts/);
 });

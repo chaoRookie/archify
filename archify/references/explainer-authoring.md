@@ -6,7 +6,7 @@ Use the forms below when they help answer the question.
 
 ## Draft
 
-Write one Markdown file, `candidate.archify.md`. The first paragraph after the title is the direct conclusion. An optional flat list immediately after it gives the reasons needed to support the conclusion. Each `##` heading starts a panel.
+Write one Markdown file, `candidate.archify.md`. The first paragraph after the title is the direct conclusion. An optional flat list immediately after it gives the reasons needed to support the conclusion. Each `##` heading starts a panel. A complete answer and its sources can stand on their own.
 
 ```md
 # Why does the first HTTPS visit take an extra round trip? {#tls-first-visit}
@@ -267,7 +267,7 @@ After a pass, give the conclusion and a descriptive link to the page. When the u
 
 Add `--repo-root <path>` when the draft uses `@code`. Finalize validates, atomically delivers and checks the HTML; it does not launch a browser, and its receipt records the browser gate as not run. A failure names the line, component, reason and a repair example; fix the draft and rerun to the same output path.
 
-Advisory writing diagnostics flag patterns such as sentences over 50 Chinese units or 28 English words, paragraphs over four sentences or 120 units, chained “的”, light verbs, set phrases, openers and sign-offs, unbounded quantities, “以上/以下/以内” after a number, long English words with a common equivalent, qualifiers such as “示例”, “未实测” or “illustrative” outside scope, a mostly bold conclusion and a scope over 50 units. Writing warnings identify possible readability improvements. Keep wording when changing it would lose a qualification, term or fact. `--writing off` suppresses writing suggestions. Both `warn` and the compatible `strict` spelling report style preferences as warnings.
+Advisory writing diagnostics flag patterns such as sentences over 50 Chinese units or 28 English words, paragraphs over four sentences or 120 units, chained “的”, light verbs, set phrases, openers and sign-offs, unbounded quantities, “以上/以下/以内” after a number, long English words with a common equivalent, a mostly bold conclusion and a scope over 50 units. Writing warnings identify possible readability improvements. Keep wording when changing it would lose a qualification, term or fact. `--writing off` suppresses writing suggestions. Both `warn` and the compatible `strict` spelling report style preferences as warnings.
 
 ## Panel replacement
 

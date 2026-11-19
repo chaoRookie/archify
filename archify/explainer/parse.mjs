@@ -1,3 +1,4 @@
+import { categorizeDiagnostic } from '../renderers/shared/diagnostic-category.mjs';
 import { createHash } from 'node:crypto';
 import { compileExplainerDiagram } from './diagrams.mjs';
 
@@ -278,7 +279,6 @@ export function parseExplainer(sourceText, { inputPath, output } = {}) {
     closePanel(sourceText.length);
     if(!titleSeen)fail(1,'title','A document requires one # title.','# What should we choose?');
     if(!answerSeen)fail(1,'answer','A short answer is required before question panels.','# A title\n\nA direct answer.\n\n## Why?');
-    if(!document.panels.length)fail(1,'panel','At least one question panel is required.','## Why does this happen?');
     if(output)document.meta.output=output;
   }
   const identities=new Map();
@@ -297,5 +297,5 @@ export function parseExplainer(sourceText, { inputPath, output } = {}) {
       for(const [bi,b]of (Array.isArray(p?.blocks)?p.blocks:[]).entries())identity(b?.id,`/panels/${pi}/blocks/${bi}/id`,b?.type||'block');
     }
   }
-  return {document:diagnostics.some(d=>d.severity==='error')?null:document,sourceMap,format,sourceText,diagnostics};
+  return {document:diagnostics.some(d=>d.severity==='error')?null:document,sourceMap,format,sourceText,diagnostics:diagnostics.map(categorizeDiagnostic)};
 }
