@@ -1849,6 +1849,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     .semantic-passport-explain p { margin: 0 0 0.4rem; }
     .semantic-passport-explain p:last-child { margin-bottom: 0; }
     .semantic-passport-explain b { font-weight: 700; }
+    .semantic-passport-explain code { font-family: var(--font-mono, monospace); font-size: 0.92em; padding: 0 0.2em; border-radius: 0.2rem; background: color-mix(in srgb, var(--text-muted) 14%, transparent); }
     .semantic-passport-meta {
       display: flex;
       flex-wrap: wrap;
@@ -5620,6 +5621,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
     function viewerKindLabel(value) {
       var normalized = String(value || 'node').toLowerCase();
+      var authored = document.querySelector('[data-legend-kind="' + normalized.replace(/[^a-z0-9_-]/g, '') + '"][data-legend-label]');
+      if (authored && authored.getAttribute('data-legend-label')) return authored.getAttribute('data-legend-label');
       var knownKey = 'viewer.kind.' + normalized;
       var known = viewerText(knownKey);
       if (known !== knownKey) return known;
@@ -8732,14 +8735,23 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           if (!line) return;
           var p = document.createElement('p');
           var cut = line.indexOf('：');
+          var body = line;
           if (cut > 0 && cut <= 10) {
             var head = document.createElement('b');
             head.textContent = line.slice(0, cut + 1);
             p.appendChild(head);
-            p.appendChild(document.createTextNode(line.slice(cut + 1)));
-          } else {
-            p.textContent = line;
+            body = line.slice(cut + 1);
           }
+          body.split('`').forEach(function (part, index) {
+            if (!part) return;
+            if (index % 2) {
+              var code = document.createElement('code');
+              code.textContent = part;
+              p.appendChild(code);
+            } else {
+              p.appendChild(document.createTextNode(part));
+            }
+          });
           explain.appendChild(p);
         });
       }

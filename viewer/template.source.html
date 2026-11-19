@@ -690,6 +690,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
     function viewerKindLabel(value) {
       var normalized = String(value || 'node').toLowerCase();
+      var authored = document.querySelector('[data-legend-kind="' + normalized.replace(/[^a-z0-9_-]/g, '') + '"][data-legend-label]');
+      if (authored && authored.getAttribute('data-legend-label')) return authored.getAttribute('data-legend-label');
       var knownKey = 'viewer.kind.' + normalized;
       var known = viewerText(knownKey);
       if (known !== knownKey) return known;

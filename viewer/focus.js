@@ -385,14 +385,23 @@
           if (!line) return;
           var p = document.createElement('p');
           var cut = line.indexOf('：');
+          var body = line;
           if (cut > 0 && cut <= 10) {
             var head = document.createElement('b');
             head.textContent = line.slice(0, cut + 1);
             p.appendChild(head);
-            p.appendChild(document.createTextNode(line.slice(cut + 1)));
-          } else {
-            p.textContent = line;
+            body = line.slice(cut + 1);
           }
+          body.split('`').forEach(function (part, index) {
+            if (!part) return;
+            if (index % 2) {
+              var code = document.createElement('code');
+              code.textContent = part;
+              p.appendChild(code);
+            } else {
+              p.appendChild(document.createTextNode(part));
+            }
+          });
           explain.appendChild(p);
         });
       }
