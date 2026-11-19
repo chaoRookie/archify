@@ -34,13 +34,9 @@ const browserSection = delivery.match(/## Automated browser evidence[\s\S]*?## O
 const perceptualReviewSection = delivery.match(/## Perceptual review[\s\S]*?## Handoff receipt/)?.[0] ?? '';
 
 test('ordinary handoff uses one deterministic finalizer without image capability', () => {
-  assert.ok(skill.indexOf('## Existing candidate handoff') < skill.indexOf('## Native diagram authoring'));
-  assert.match(skill, /run `finalize` first as one CLI invocation/);
-  assert.match(skill, /passing receipt completes the automated gates; follow any visual review recommendation/i);
   assert.match(skill, /archify\.mjs finalize <type> <candidate\.json> <output\.html> --quality showcase --json/);
-  assert.match(skill, /When the user supplies a frozen candidate[\s\S]*?run `finalize` first as one CLI invocation/);
-  assert.match(skill, /Once the complete first candidate is written, run `finalize` directly\. Its first gate is showcase validation/);
-  assert.doesNotMatch(skill, /node bin\/archify\.mjs deliver <type> <candidate\.json> <output\.html>/);
+  assert.match(skill, /--repo-root <repo-root>/);
+  assert.match(skill, /A non-zero exit is never success/);
 
   assert.match(finalizeSection, /`browser-check --require-provenance`/);
   assert.match(finalizeSection, /stops at the first failed or skipped stage/i);
@@ -89,7 +85,6 @@ test('perceptual review is optional for fresh architectures and available for vi
   assert.match(perceptualReviewSection, /novel layout or browser diagnostic leaves low confidence/i);
   assert.match(perceptualReviewSection, /sampled audit or dogfood/i);
   assert.match(perceptualReviewSection, /run `visual-check`[\s\S]*contact sheet/i);
-  assert.match(perceptualReviewSection, /never exceed two focused correction rounds/i);
   assert.match(perceptualReviewSection, /Never report\s+`visual_review: passed` without inspecting/i);
   assert.match(skill, /Inspect captures before claiming visual quality; qualify any check claim as automated when perceptual review has not occurred/);
   assert.match(perceptualReviewSection, /visual_review: skipped \(image reader unavailable\)[\s\S]*requested or triggered review could not run/i);

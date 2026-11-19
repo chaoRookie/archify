@@ -8,7 +8,7 @@ When correcting an authored overview's abstraction, map every affected role, rel
 
 ## Label repair
 
-When a relationship label collides, move the label, adjust the route or spacing, then shorten the wording while preserving meaning. Omit wording only when both endpoints fully imply it and it conveys no protocol, action, direction, synchronous or asynchronous behavior, or cross-boundary mechanism. Spacing means clear gap rather than center distance; measured mask width takes precedence. The first-draft gap budget is in [Layout and routing](authoring-defaults.md#layout-and-routing).
+When a relationship label collides, adjust the label position, route, spacing, or wording while preserving meaning. Omit wording only when both endpoints fully imply it and it conveys no protocol, action, direction, synchronous or asynchronous behavior, or cross-boundary mechanism. Spacing means clear gap rather than center distance; measured mask width takes precedence. The first-draft gap budget is in [Layout and routing](authoring-defaults.md#layout-and-routing).
 
 For a disproportionate sublabel, keep its exact role or protocol concise and place the supplementary fact in a note or card. Preserve every required responsibility, protocol, and boundary fact. Use the first-draft node-width budget in [Layout and routing](authoring-defaults.md#layout-and-routing).
 
@@ -51,13 +51,7 @@ use the legend to compensate for missing nodes, states, messages, or flows.
 Long labels are measured and wrap into deterministic rows. Architecture's
 implicit automatic viewBox grows from that same measured footprint, and an
 automatic ERD canvas is sized the same way so its default legend is always in
-the generated content. For backwards compatibility, a legacy document with no
-`meta.legend` may omit an implicit auto legend that cannot fit its explicit
-viewBox; this never changes its typed topology. An ERD that authors a
-`meta.viewBox` keeps that fixed area and reports the capacity instead of
-dropping the legend. Adding `meta.legend` makes the presentation intentional and
-strict: if its resolved labels cannot fit the authored viewBox, shorten or hide
-them, or widen the viewBox using the emitted diagnostic.
+the generated content. When a legacy fixed canvas cannot fit its implicit auto legend, the fallback preserves its entries as a text key below the diagram. An ERD with an authored `meta.viewBox` reports insufficient legend capacity. An explicit `meta.legend` also requires space for its labels. Use the diagnostic to widen the canvas or reserve room for the full key.
 
 ## Language consistency
 
@@ -156,9 +150,9 @@ Generate one responsive artifact for laptops and external displays, preserving t
 - A side is a direction contract. The first and final route segment must be perpendicular and outward/inward in the named direction.
 - In architecture and data-flow diagrams, explicit `route: "straight"` requests one direct segment, which may be diagonal when endpoint sides are not pinned. The artifact checker preserves this intent; explicit sides, opaque-node clearance, and other quality gates still apply. `via` takes precedence and retains existing rules, including data-flow's requirement for orthogonal via segments.
 - Automatic Port Spread is a default renderer behavior for architecture, workflow, and data-flow diagrams. Shared automatic endpoints spread deterministically and symmetrically with a 16px corner gutter. It does not apply to sequence messages, single relationships, or explicit `via`, `channelX`, `channelY`, `labelAt`, or non-`auto` routes.
-- Showcase route rhythm: every nonzero segment must be at least 8px; every interior segment must be at least 16px. When spread ports are nearly parallel, the router uses a 24px endpoint stub and a 16px outside bridge instead of manufacturing a tiny dogleg.
-- Showcase route compactness: an explicit Architecture route fails with `composition/excessive-route-detour` when its orthogonal length is at least 2.5 times an obstacle-aware legal route, adds at least 200px, and sends a control point at least 96px beyond the content envelope. The evidence records both lengths, ratio, excess, bounds, and excursion. Remove an unnecessary `via` or move the diagnosed corridor inward instead of enlarging the canvas. Related relationships that overlap on the same outer corridor by at least 32px are treated as an intentional bus and remain valid.
-- Shared endpoint corridors are allowed only when they remain semantically unambiguous. Unrelated collinear overlap of 8px or more fails showcase.
+- Showcase route rhythm flags nonzero segments under 8px and interior segments under 16px as visual preferences. When spread ports are nearly parallel, the router uses a 24px endpoint stub and a 16px outside bridge instead of manufacturing a tiny dogleg.
+- Showcase route compactness: an explicit Architecture route may receive the advisory `composition/excessive-route-detour` when its orthogonal length is at least 2.5 times an obstacle-aware legal route, adds at least 200px, and sends a control point at least 96px beyond the content envelope. The evidence records both lengths, ratio, excess, bounds, and excursion. Remove an unnecessary `via` or move the diagnosed corridor inward instead of enlarging the canvas. Related relationships that overlap on the same outer corridor by at least 32px are treated as an intentional bus and remain valid.
+- A resolved crossing can be a visual preference. Repair any unresolved crossing or shared corridor that makes it unclear which endpoints connect. Unrelated collinear overlap of 8px or more fails showcase.
 - Container borders are intentional pass-through geometry, but a long edge running along a structural border is not.
 - An edge crossing an unrelated opaque node is always a hard failure, independent of quality profile.
 
@@ -223,8 +217,8 @@ label mask width ≈ 6.5px × ASCII units + 13px
 CJK characters count as two units
 ```
 
-Relationship labels are semantic data. If the gap is too small, move the label,
-adjust the route or spacing, then shorten the wording while preserving meaning.
+Relationship labels are semantic data. If the gap is too small, adjust label position,
+routing, spacing, or wording while preserving meaning.
 Omit only wording already fully implied by both endpoints and carrying no
 protocol, action, direction, synchronous/asynchronous behavior, or
 cross-boundary mechanism. Preserve every meaningful label.
@@ -232,9 +226,7 @@ Deleting it is not a spacing repair. If a relationship starts unlabeled because
 its endpoints fully imply it, explain why the wording is redundant; this is a
 semantic authoring choice, not a spacing repair. In workflow v2, let the compiler
 allocate its measured mask before applying a diagnosed `labelAt`,
-`labelDx`/`labelDy`, or `labelSegment`. Apply one diagnosed geometry control at
-a time unless several edges share a constrained channel. In that case, plan the smallest coupled change from measured geometry and
-validate it together. Architecture/workflow provide layout evidence through
+`labelDx`/`labelDy`, or `labelSegment`. A shared channel can require moving several edges together. Verify their new clearance against the measurements. Architecture/workflow provide layout evidence through
 `validate <type> <candidate.json> --layout-json`; for other types, use validation
 diagnostics and the rendered SVG geometry.
 Before adding manual routes, check whether unnecessary agent-added controls
@@ -266,24 +258,17 @@ placement together before adding route controls. Apply one coherent repair and
 validate it; independent label nudges cannot fix a shared layout bottleneck.
 Compare diagnostics by code, subject, and stage instead of total count alone.
 
-### Repair order
+### Choosing a repair
 
-1. Fix missing/invalid `meta.quality_profile` and schema errors.
-2. Fix node overlap or out-of-range placement.
-3. Fix edge-through-node and endpoint-direction errors.
-4. Fix crossings, ambiguous corridors, border runs, excessive detours, and route rhythm.
-5. Fix label-to-node, label-to-label, then label-to-route clearance.
-6. Fix labels that leave the canvas: move the label with `labelAt`/`labelDx`/`labelDy`/`labelSegment`, or widen `meta.viewBox`. Suggested `labelDx`/`labelDy` values replace the authored field; they are not added to it.
-
-After every edit, rerun the complete `finalize` as the delivery contract requires; use `validate` only for focused diagnosis between finalize runs. Consume `diagnostics[]` by stable `code`, exact `subject`, measured `evidence`, and `supportedFixes`. If the diagnostic gives `labelAt`, use that point instead of estimating another offset.
+Use the diagnostic’s `code`, `subject`, measured `evidence`, and `supportedFixes` to locate the defect. A schema error can prevent geometry from being measured. Overlapping nodes or a shared corridor may explain several downstream label collisions. For a label outside the canvas, the measured bounds can justify moving the label or widening an authored viewBox. Suggested `labelDx`/`labelDy` values replace the authored field. Verify the revised artifact at the quality required for delivery.
 
 ## Mode placement
 
 ### Architecture
 
-Choose overview or mechanism detail using [Composition and meaning](authoring-defaults.md#composition-and-meaning). Use one obvious primary reading path, which may step across meaningful rows when the requested topology needs room. Keep the overview readable at its chosen abstraction; expand implementation details when they answer the reader's question. Group only real ownership, trust, process, or deployment boundaries. Boundaries do not replace relationships.
+Choose overview or mechanism detail using [Composition and meaning](authoring-defaults.md#composition-and-meaning). Give the reader a clear entry into the requested paths, including independent paths where the system has several. Keep the overview readable at its chosen abstraction; expand implementation details when they answer the reader's question. Group only real ownership, trust, process, or deployment boundaries. Boundaries do not replace relationships.
 
-Grid placement is preferred when the schema supports it. Free positions are appropriate for a bounded exception, not for prose-level coordinate planning. Keep external actors outside the system boundary when that is factually true. A boundary is drawn as the padded box around all of its members, so place them as one compact axis-aligned cluster (no empty bay that lets a non-member sit inside the padded frame) and keep every non-member outside that box; `layout/boundary-encloses-non-member` reports a component the box swallows in showcase quality. Standard retains its existing acceptance behavior.
+Grid placement is preferred when the schema supports it. Free positions can help when a grid obscures a verified relationship. Keep external actors outside the system boundary when that is factually true. A boundary is drawn as the padded box around all of its members, so place them as one compact axis-aligned cluster (no empty bay that lets a non-member sit inside the padded frame) and keep every non-member outside that box; `layout/boundary-encloses-non-member` reports a component the box swallows in showcase quality. Standard retains its existing acceptance behavior.
 
 ### Workflow
 
@@ -291,7 +276,7 @@ Lanes express responsibility or phase. Columns `0..5` express logical
 progression. Start new workflows on `readable-v2`; retain `fixed-v1` only for
 legacy geometry compatibility. In readable-v2, nodes may share a `(lane, col)`
 when distinct `yOffset` values leave room for their full rectangles, labels and
-connecting routes. Keep the happy path monotonic, preserve semantic edge labels,
+connecting routes. For processes that exceed six columns, use rows or meaningful phases, or connect multiple views at explicitly named handoffs. Preserve every step, direction and semantic edge label,
 and route retries and exception returns outside the main lane corridor.
 
 #### Workflow viewport repair
@@ -325,7 +310,7 @@ First-draft shape: every message needs an `id`, `from`, `to`, `label`, and integ
 
 ### Dataflow
 
-Stages express transformation or custody. Rows separate parallel streams. Give every flow a concise data-contract or movement label; choose its visual convention using the required [Dataflow authoring defaults](authoring-defaults.md#presentation-and-modes).
+Native Dataflow supports two to five stages per view. Longer pipelines can show several related operations within a stage or continue in another view at the same named data handoff. Stages express transformation or custody. Rows separate parallel streams. Give every flow a concise data-contract or movement label; choose its visual convention using the required [Dataflow authoring defaults](authoring-defaults.md#presentation-and-modes).
 
 First-draft shape: declare `stages[]` (each a `{label}`), then place every node with integer `stage` and `row` — not `pos`/`size`. Flows are `flows[]` with required `from`, `to`, and non-empty `label`.
 
@@ -339,10 +324,7 @@ uses `ARCHIFY_QUALITY_PROFILE` when set, otherwise the JSON profile.
 
 ### ERD
 
-Treat a schema ERD as a table catalogue as well as a relationship map. If the
-schema has more than 8 tables or 50 fields, it is a dense full-schema map: start
-with `meta.quality_profile: "standard"` so complete field visibility is not
-traded away for repeated showcase route repairs. Include every physical column in
+A complete physical-schema ERD is a table catalogue as well as a relationship map. For dense schemas, `standard` is available when all fields need to remain visible. Include every physical column in
 `attributes`, keep the source SQL type, and preserve the
 field's Chinese comment in the type string as `SQL_TYPE｜中文备注` because the
 schema has no separate comment property. The default viewer shows these rows at
@@ -350,8 +332,8 @@ the `read` level; do not rely on hover/focus or cards to reveal physical fields.
 Cards may explain constraints, inferred relationships, or domain rules, but never
 replace a field list.
 
-Before placing boxes, classify tables into functional domains using verified table
-names, comments, module paths, and foreign-key meaning. Put the domain name in
+When functional domains explain the requested schema, ground them in verified table
+names, comments, module paths, and foreign-key meaning. Put each domain name in
 `tag` and give each domain one solid rectangle of grid cells: a single row, a
 single column, or a filled rectangular block — not an L or a diagonal — with
 every cell of the rectangle holding one of its tables.
@@ -394,16 +376,15 @@ drawn glyph states the end's maximum, not a direction of travel.
 A table side only has room for so many ends: the ports spread at most `(side
 extent - 32) / (ends - 1)` apart, and a cardinality glyph is 14 units tall. More
 relationship ends than that room allows is `layout/marker-capacity`, which names
-the table, the side, and the ways out — add fields so the side is taller, spread
-the relationships, or reduce the fan-in. Never fix it by hiding the cardinality.
+the table and side. Place related tables on different sides to spread their ends,
+or show connected detail views with explicit table and foreign-key targets. Never fix it by hiding the cardinality.
 
 Give the domains a column each when the model has to read completely inside a
 laptop viewport. The Reader scales a wide canvas up to the reader width and
 narrows a tall one until the whole page fits, so the same eleven tables cost text
 size when they are stacked as four horizontal domains instead of four vertical
 ones. Leave a whole tile of the grid free where a long relationship has to cross
-a domain: a run that crosses an occupied cell forces a jog, and a jog below the
-interior floor is a `composition/short-interior-segment` failure.
+a domain: a run that crosses an occupied cell forces a jog, and a short jog may trigger a `composition/short-interior-segment` suggestion.
 
 An automatic canvas is sized so the default legend is always in the generated
 content, and a canvas the author fixes with `meta.viewBox` reports its legend
@@ -446,7 +427,7 @@ triangle), `realization` (`from` implements interface `to`, dashed hollow
 triangle), `composition` and `aggregation` (`from` is the whole, filled or
 hollow diamond at `from`). Realization must target an interface from a
 non-interface; inheritance must not cross the interface boundary; an
-inheritance cycle is rejected.
+inheritance cycle is rejected. A type cannot draw an edge to itself. Show a recursive member with its actual type or name the self-reference in a note.
 
 Place types on the `row`/`col` grid with supertypes above their subtypes. Two
 or more automatic generalizations into one supertype draw as one hierarchy bus
@@ -468,7 +449,7 @@ without one is rejected rather than guessed. `meta.timezone` (IANA, default
 it. `meta.evidence` is required: `observed` for recorded events (logs, git
 history, pager records) and `illustrative` for explanatory input. Never mark
 invented or approximate times as observed, and never fill gaps with events the
-input does not contain.
+input does not contain. For date-only evidence, keep the date in a table or a dated list until an exact time and offset are available.
 
 Use `lanes` for sources or categories (release, monitoring, response); every
 event then names one. Each event's visible text is `title` (not `label`). `kind`
@@ -514,8 +495,7 @@ the transition text's minimum gap and stop widening the main-path row when its
 minimum width would exceed the original text readability budget; the final
 width and label-clearance checks still apply.
 
-Keep the main path to the phases a reader follows, at most about six states,
-and keep transition labels short. A recoverable failure needs a real transition
+Show the states and transitions the question requires. A long path can use linked detail views that retain the connecting states and transitions. A recoverable failure needs a real transition
 back to an active state; a card saying “retry” is not topology.
 
 Pick each state's `type` by what the reader should notice, since color and the

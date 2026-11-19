@@ -85,8 +85,12 @@ test('guide: repair recipe supports exact selection and explicit language overri
     assert.equal(exact.recommendation.id, 'layout-repair');
     assert.equal(exact.confidence, 'high');
     assert.equal(exact.lang, lang);
-    assert.equal(recommendScenario('viewport overflow', { lang }).recommendation.prompt, exact.recommendation.prompt);
-    assert.equal(recommendScenario('视口溢出', { lang }).recommendation.prompt, exact.recommendation.prompt);
+    for (const query of ['viewport overflow', '视口溢出']) {
+      const suggested = recommendScenario(query, { lang });
+      assert.equal(suggested.recommendation.question, query);
+      assert.ok(suggested.recommendation.prompt.includes(query));
+      assert.ok(suggested.recommendation.prompt.includes(exact.recommendation.prompt));
+    }
   }
 });
 
@@ -99,6 +103,9 @@ test('guide: exact ids win and unknown questions fall back honestly', () => {
   assert.equal(unknown.recommendation.id, 'system-overview');
   assert.equal(unknown.confidence, 'low');
   assert.deepEqual(unknown.matchedSignals, []);
+  assert.equal(unknown.recommendation.question, unknown.query);
+  assert.ok(unknown.recommendation.prompt.includes(unknown.query));
+  assert.ok(!unknown.recommendation.prompt.includes(SCENARIO_RECIPES[0].en.prompt));
 });
 
 test('guide: public data includes both languages and weighted signals', () => {

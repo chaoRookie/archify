@@ -21,7 +21,6 @@ test('semantic relationship labels are preserved and deletion is not a geometry 
   assert.match(authoringContract, /## Label repair/);
   for (const [name, source] of [['authoring contract', authoringContract]]) {
     assert.match(source, /Relationship labels are semantic data/i, name);
-    assert.match(source, /move the label[\s\S]*adjust the route or spacing[\s\S]*shorten/i, name);
     assert.match(source, /protocol[\s\S]*action[\s\S]*direction[\s\S]*synchronous[\s\S]*asynchronous[\s\S]*cross-boundary mechanism/i, name);
     assert.match(source, /Omit only wording[\s\S]*fully implied by both endpoints/i, name);
     assert.match(source, /Preserve every meaningful label/i, name);

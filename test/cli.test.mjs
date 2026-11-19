@@ -344,7 +344,7 @@ test('cli: guide detects Chinese and explains the recommendation boundary', () =
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /推荐: 事件流拓扑  \[dataflow\]/);
   assert.match(result.stdout, /不要这样用:/);
-  assert.match(result.stdout, /必须包含:/);
+  assert.match(result.stdout, /可参考的内容:/);
   assert.match(result.stdout, /可直接复制的提示词:/);
 });
 
@@ -362,35 +362,23 @@ test('cli: guide works from an installed skill without node_modules', () => {
   assert.equal(JSON.parse(result.stdout).recommendation.id, 'incident-runbook');
 });
 
-test('cli: guide returns repair steps, via semantics, and viewport checks as JSON', () => {
-  const result = run(['guide', 'viewport overflow', '--json']);
+test('cli: guide keeps the requested repair in its suggested prompt', () => {
+  const query = 'Fix viewport overflow in our call graph without moving the callback';
+  const result = run(['guide', query, '--json']);
   assert.equal(result.status, 0, result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.recommendation.id, 'layout-repair');
-  assert.equal(parsed.confidence, 'high');
+  assert.equal(parsed.recommendation.question, query);
+  assert.ok(parsed.recommendation.prompt.includes(query));
   assert.ok(parsed.matchedSignals.includes('viewport overflow'));
-  const prompt = parsed.recommendation.prompt;
-  assert.match(prompt, /schema.*overlap.*direction.*crossings.*labels/s);
-  assert.match(prompt, /\[start, \.\.\.via, end\]/);
-  assert.match(prompt, /absolute.*\[x, y\]/);
-  assert.match(prompt, /1440×900.*1600×1000.*1920×1080.*2048×1320/);
-  assert.match(prompt, /scrollWidth <= window\.innerWidth/);
-  assert.match(prompt, /Reader-declared readable vertical page scroll/);
-  assert.match(prompt, /validate.*diagnostics\[\].*supportedFixes/);
 });
 
-test('cli: guide prints localized repair advice, including an explicit language override', () => {
-  for (const args of [
-    ['guide', '视口溢出，标签重叠，修复顺序'],
-    ['guide', 'how do via waypoints work', '--lang', 'zh'],
-  ]) {
-    const result = run(args);
+test('cli: localized repair advice preserves the original question across language overrides', () => {
+  for (const query of ['视口溢出，保留右侧回调', 'how do via waypoints work']) {
+    const result = run(['guide', query, '--lang', 'zh']);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /推荐: 布局修复/);
-    assert.match(result.stdout, /schema.*重叠.*方向.*交叉.*标签/s);
-    assert.match(result.stdout, /\[start, \.\.\.via, end\]/);
-    assert.match(result.stdout, /Reader 已达到投影文字下限并接受可读的页面纵向滚动/);
-    assert.match(result.stdout, /validate/);
+    assert.ok(result.stdout.includes(query));
   }
 });
 

@@ -2,15 +2,13 @@
 
 ## Failed finalize and candidate repair
 
-`finalize` stops at the first non-passing gate. Use compact stdout or `evidence.summaryReceipt`; read its full sidecar only when the summary lacks evidence needed for a coherent repair. A receipt with four artifact checks is basic validation, not showcase acceptance: require all nine checks, zero composition errors, and zero warnings. Fix `meta.quality_profile` and schema errors before geometry. A dense full-schema ERD may keep `standard` for its first complete-field pass: require zero structural errors, no edge-through-node failures, complete field rows, and a readable grouped grid, and record composition warnings instead of spending unbounded time on them.
+`finalize` stops at the first non-passing gate. Use compact stdout or `evidence.summaryReceipt`; read its full sidecar only when the summary lacks evidence needed for a coherent repair. Check the actual quality profile, gate status and diagnostics in the receipt. Basic validation alone cannot establish showcase acceptance. A dense full-schema ERD can use `standard` when appropriate to the requested output. Preserve field rows, relationship paths and readable layout. Report the actual profile, failed checks and relevant warnings.
 
-For a validation failure, edit the existing JSON in the connected neighborhood named by diagnostics before rerunning a command. Preserve requested semantics, meaningful labels, source evidence, and fixed or agreed topology. Several routes sharing nodes call for one placement repair; read [Architecture layout repair](architecture-layout-repair.md) for that case. Reflow a blocked main path rather than nudging unrelated labels. Keep unrelated geometry when its composition already reads clearly. Use `--layout-json` before editing only when compact evidence lacks needed measurements. Workflow v2 uses its stable compiler receipt, not solver internals, as authoring evidence.
+Use the diagnostic category, code, subject, stage and measurements to identify a repair. A fact error calls for correcting the claim or invalid reference. A capability limit calls for a faithful representation the renderer supports. A visual preference is advice about presentation. Report the actual gate outcome even when a suggestion is optional. Schema errors can block later measurements. A blocked path or several routes sharing nodes may call for [Architecture layout repair](architecture-layout-repair.md). Workflow v2 exposes geometry through its compiler receipt. Use `--layout-json` if more detail would change the repair. Preserve requested semantics, meaningful labels, source evidence and fixed or agreed topology.
 
-Keep the best candidate that cleared route checks before a viewport repair. If that repair introduces new route collisions, restore the measured layout and address its remaining canvas or text constraint.
+Verify the revised artifact at its chosen quality and pass `--repo-root <repo-root>` for repository-backed work. If the output path has browser evidence from another candidate, use a fresh `--out-dir <output-stem>.review-<revision>` for the new `finalize` and any `visual-check`. A hash binds one version of a candidate. Omit an earlier `--candidate-sha256` after editing. Keep or restore a previous layout if it better preserves the requested behavior. Report any unresolved defect with its evidence when further edits would require guessing or changing the facts.
 
-After the edit, rerun the complete `finalize` command with `--quality showcase` and, for repository-backed work, `--repo-root <repo-root>`. If the output path already has browser evidence from another candidate, use a fresh `--out-dir <output-stem>.review-<revision>` for both the new `finalize` and any `visual-check`. Omit an earlier `--candidate-sha256` after editing because it binds the previous candidate. Compare diagnostics by code, subject, stage, and evidence, never by declining error count alone. Track the repair limit per persistent issue, using that code, subject, stage, and evidence: a newly exposed issue starts its own repair sequence. If an issue survives two focused repairs, inspect measured geometry or the relevant contract; after one evidence-based retry, report the concrete gap.
-
-Use standalone `validate` only for focused diagnosis, passing `--repo-root` for repository-backed work. Its passing receipt marks `candidateFrozen: true`; run `nextAction.arguments`, replacing only `<output.html>`, without editing, revalidating, or rereading the candidate. Retry later environmental or evidence failures against those frozen bytes. A measured reason to edit creates a new candidate and calls for the complete `finalize` without the old hash.
+A passing standalone `validate` receipt marks `candidateFrozen: true`. Its `nextAction.arguments` can finalize those bytes after substituting the output path. A changed candidate needs fresh verification.
 
 ## Validate and deliver
 
@@ -239,7 +237,7 @@ bypass any non-output schema or compiler error. For every other repair, add a
 portable POSIX-relative `.html` path to `meta.output`; no schema-version change
 is otherwise required.
 
-Run `finalize` directly on a complete first candidate and after every repair edit. Its embedded validation checks the candidate before delivery; use standalone `validate` only for focused diagnosis. After an edit, omit any earlier `--candidate-sha256`, which binds the previous candidate. CLI HTML output paths must end in
+A final `finalize` verifies the current candidate before delivery. Standalone `validate` is available for diagnosis. After an edit, omit any earlier `--candidate-sha256`, which binds the previous candidate. CLI HTML output paths must end in
 `.html`, including after symbolic-link resolution. Compare receipt paths must
 end in `.json`. A type mismatch fails before writing with
 `output/cli-extension` or `output/cli-resolved-extension`. These checks prevent
@@ -494,7 +492,7 @@ A passing `finalize` may report `layoutReviewRecommendation.action: "inspect-seq
 
 A passing `validate --json`, `deliver`, or `finalize` receipt may carry `diagnostics[]` entries with `severity: "warning"` for Viewer locale fallbacks (`i18n/*`). They fail no gate. When the artifact should be fully localized, repair the listed keys from their `evidence` and rerun `finalize`.
 
-Sequence canvases with omitted `meta.column_fit` use `spread`, whether or not `meta.viewBox` is supplied. An authored viewBox remains authoritative; infeasible participant capacity fails without silently enlarging it. Explicit `meta.column_fit: "fixed"` preserves historical fixed columns. For a candidate whose fixed-column width suggestion remains, first check whether the fixed geometry is intentional. Only when a change to that geometry is authorized, save the candidate, set only `meta.column_fit` to `"spread"`, and rerun the complete `finalize` once with `--out-dir <folder>/width-review`. Keep participant order, messages and their y positions, labels, notes, sources and canvas dimensions. If that attempt fails, restore the candidate and finalize it with `--out-dir <folder>/width-restore`; report the remaining layout suggestion rather than iterating. Preserve intentional fixed geometry and disclose the suggestion when a change is not authorized. To retain historical fixed coordinates for an older omitted-fit input, set `meta.column_fit: "fixed"` explicitly. This review is about horizontal composition; a passing receipt still does not claim perceptual approval.
+Sequence canvases with omitted `meta.column_fit` use `spread`, whether or not `meta.viewBox` is supplied. An authored viewBox remains authoritative; infeasible participant capacity fails without silently enlarging it. Explicit `meta.column_fit: "fixed"` preserves historical fixed columns. For an unintentional gap, `meta.column_fit: "spread"` can put that space to use. Preserve authorized geometry, participant order, messages, times, labels, notes and sources. A changed artifact needs fresh evidence. A passing receipt with a width suggestion is still a pass.
 
 ## Optional capture evidence
 
@@ -630,9 +628,7 @@ status:
 - `visual_review: skipped (image reader unavailable)` — a requested or triggered review could not run.
 - `visual_review: failed` — with the concrete visible defect.
 
-For an escalated review, use `correction_rounds: 0`, `correction_rounds: 1`, or
-`correction_rounds: 2`; never exceed two focused correction rounds. When review
-is not requested, use `correction_rounds: 0`. Never report
+Record the actual number of correction rounds if requested. Never report
 `visual_review: passed` without inspecting the artifact. If perceptual review
 changes the candidate, rerun `finalize` because the previous specification and
 artifact receipts are no longer current.
@@ -651,7 +647,7 @@ artifact_sha256: <receipt value>
 validation: <actual quality profile, check counts, errors, and warnings>
 browser_evidence: passed|failed|skipped
 visual_review: not_requested|passed|skipped (image reader unavailable)|failed
-correction_rounds: 0|1|2
+correction_rounds: <actual count>
 ```
 
 Derive `browser_evidence` only from the latest artifact-bound `browser-check`

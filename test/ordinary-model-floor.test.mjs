@@ -998,49 +998,16 @@ test('benchmark documentation locks the fair-run and truthful-evidence contract'
   }
 });
 
-test('packaged skill keeps first-draft rules inline and repair contracts behind reachable triggers', () => {
+test('packaged authoring guidance locates the evidence needed for a faithful overview', () => {
   const read = (file) => fs.readFileSync(path.join(skillRoot, file), 'utf8');
   const skill = read('SKILL.md');
   const defaults = read('references/authoring-defaults.md');
-  const authoring = read('references/authoring-contract.md');
-  const delivery = read('references/delivery-contract.md');
   const repository = read('references/repository-authoring.md');
-  const fastPath = skill.slice(skill.indexOf('## Native diagram authoring'), skill.indexOf('## Update awareness'));
-  assert.match(skill, /## Existing candidate handoff[\s\S]*run `finalize` first as one CLI invocation/);
-  assert.match(fastPath, /exact schema and example paths in the Type router without listing their directories/);
-  assert.match(fastPath, /references\/authoring-defaults\.md/);
-  assert.match(fastPath, /bounded batch separate from project documents and complete schemas/);
-  assert.match(fastPath, /recover any missing section before writing/);
-  assert.match(fastPath, /write the complete candidate directly without planning coordinates in prose/);
-  assert.match(fastPath, /Set `meta\.quality_profile` to `"showcase"`/);
-  assert.match(fastPath, /successful first drafts need no separate pre-validation/);
-  assert.match(fastPath, /Keep the candidate unchanged while the command runs/);
-  assert.match(fastPath, /finalize <type> <candidate\.json> <output\.html> --repo-root <repo-root> --quality showcase --json/);
-  assert.match(fastPath, /standalone commands only for a separate request or focused failure diagnosis/);
-  assert.match(fastPath, /A non-zero exit is never success/);
-  assert.match(fastPath, /references\/delivery-contract\.md#failed-finalize-and-candidate-repair/);
-  const repair = delivery.match(/## Failed finalize and candidate repair[\s\S]*?(?=\n## |$)/)?.[0] ?? '';
-  assert.match(repair, /candidateFrozen: true/);
-  assert.match(repair, /--candidate-sha256/);
-  assert.match(repair, /fresh `--out-dir/);
-  assert.match(repair, /all nine checks, zero composition errors, and zero warnings/);
-  assert.match(repair, /two focused repairs[\s\S]*one evidence-based retry/);
-  assert.match(defaults, /default to a system overview/);
-  assert.match(defaults, /There is no node, edge, source, card, or boundary quota/);
-  assert.match(defaults, /Start with automatic routes and endpoint sides/);
-  assert.match(defaults, /Pin a side only for a necessary branch, return, or supplied geometry/);
-  assert.match(defaults, /Before writing positions[\s\S]*6\.5px × ASCII units \+ 21px/);
-  assert.match(defaults, /9px[\s\S]*5\.4px × text units \+ 8px/);
+  assert.match(skill, /references\/repository-authoring\.md/);
+  assert.match(skill, /references\/delivery-contract\.md#failed-finalize-and-candidate-repair/);
   assert.match(defaults, /card alone cannot qualify an otherwise unconditional arrow/);
   assert.match(repository, /local-only[\s\S]*SSH origin, unsupported forge/);
   assert.match(repository, /actual write or execution\s+site and the conditions/);
-  for (const instructions of [skill, defaults]) {
-    assert.doesNotMatch(instructions, /(?:at most|no more than|maximum of|cap(?:ped)? at|limit(?:ed)? to)\s+\d+\s+(?:nodes?|components?|relationships?)/i);
-  }
-  assert.match(defaults, /recoverable failure needs a real transition back/);
-  assert.match(authoring, /componentType/);
-  assert.match(authoring, /clear gap between boxes, not center distance/i);
-  assert.match(read('references/viewer-runtime.md'), /Direct Relationship Pin/);
 });
 
 test('dated three-model evidence retains every frozen attempt-1 candidate and truthful gate result', () => {

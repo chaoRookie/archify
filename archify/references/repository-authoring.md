@@ -7,7 +7,9 @@ fact has supporting source evidence.
 
 ## Explore on demand
 
-1. **Freeze identity.** From the target repository, record `git rev-parse
+Use these methods as needed to establish the claims in scope.
+
+- **Freeze identity.** From the target repository, record `git rev-parse
    HEAD`, `git remote get-url origin`, and `git status --short`. Remove HTTP(S)
    userinfo (including usernames, passwords, and tokens) before recording the
    origin or placing it in the candidate. Preserve its transport, port, path and
@@ -24,7 +26,7 @@ fact has supporting source evidence.
    present uncommitted bytes as evidence for `HEAD`; `local-only` does not record
    a verifiable snapshot of those bytes.
 
-2. **Map the slice.** Use project instructions, manifests, entry points,
+- **Map the slice.** Use project instructions, manifests, entry points,
    registrations, and deployment configuration to locate candidate runtime
    units. Read the entry, configuration, and modules relevant to the request.
    Follow imports and call sites
@@ -32,20 +34,19 @@ fact has supporting source evidence.
    side effect. Read a small connected slice instead of scanning the repository
    for a convenient label.
 
-3. **Trace ownership.** Derive runtime and I/O relationships from the observed
+- **Trace ownership.** Derive runtime and I/O relationships from the observed
    actor, operation, and target at their call sites; deployment and trust
    relationships use the corresponding configuration or enforcement evidence. Distinguish the controller requesting
    an operation from the runtime that executes it and the store receiving bytes.
    For a file or database edge, the source must identify its actual reader or
    writer; a responsibility statement such as “maintains tasks” does not prove
-   direct I/O. Keep these facts with the source locations while reading, without
-   a separate planning artifact. Choose which distinctions need separate
+   direct I/O. Keep these facts with the source locations while reading, alongside the diagram claims. Choose which distinctions need separate
    nodes using [Composition and meaning](authoring-defaults.md#composition-and-meaning);
    discovering an implementation role does not automatically add it to the overview.
    A configured provider, an injected adapter, a local stub, and a durable
    service are different claims; label the one the source supports.
 
-4. **Record evidence while reading.** Keep exact repository-relative paths and
+- **Record evidence while reading.** Keep exact repository-relative paths and
    inclusive line ranges for each component and meaningful relationship. Follow
    actual branches, retries, fallbacks, and error handling. A function that is
    exported or configured but never called by the normal path is an optional
@@ -54,16 +55,16 @@ fact has supporting source evidence.
    site and the conditions that permit it; an upstream caller alone does not
    establish those conditions.
 
-5. **Name uncertainty.** Write unresolved questions beside the claim they
+- **Name uncertainty.** Write unresolved questions beside the claim they
    affect: for example, “`writeFile` is called here; durability is unknown.”
    Resolve a question by reading the next relevant source range or preserve it
    as an explicit unknown. Never turn a label, package description, or config
    value into an unobserved service or behavior.
 
 Stop exploring when every requested responsibility, relationship, and boundary
-has supporting source entailment and the remaining unknowns cannot change that
+has supporting source evidence and the remaining unknowns cannot change that
 coverage. There is no node, edge, citation, view, card, or boundary count to
-hit. Do not add a summary step merely to signal completion.
+hit.
 
 Batch independent relevant files when known. Read source excerpts with their original
 line numbers (for example, `nl -ba <file> | sed -n '40,90p'`). Copy citation
@@ -75,31 +76,24 @@ the affected entry points, configuration, dependencies, and evidence.
 
 ## Evidence by diagram type
 
-Only the primary elements carry `sources`, at most three ranges each:
+Attach as many distinct supporting ranges as the claims require to the primary elements that carry `sources`:
 Architecture components, Workflow, Dataflow and Tree nodes, Sequence
 participants, Lifecycle states, ERD entities, Class types, Timeline events and
 Waterfall spans. Relationships, messages, flows and transitions have none: cite
 the call, write or transition site on the element that owns it (the caller, the
-writer, the state being left) and keep further evidence in a note or card. A
+writer, the state being left) and explain the relationship in a note or card when that helps identify the relevant citation. A
 folder node cites its own README or entry file, or else the file that defines
 or runs it. A Timeline event cites a file at the pinned revision that records
-it, such as a changelog entry, and takes its time from a tag or commit in that
-history, or noon local time for a date-only record. A tag or commit outside
-that history is not citable. Say either in a card. A Waterfall without a
+it, such as a changelog entry, and takes its time from a record that timestamps the event itself. A tag or commit
+time can support a tag or commit event in the pinned history. If a record gives
+only a date, keep that precision in a dated list or table, or request a timestamp
+and timezone for an observed Timeline. Do not assign a time of day. A Waterfall without a
 recorded trace uses `meta.evidence: "illustrative"` and keeps its durations
 labelled as such; do not run the project only to time it.
 
 ## Choose an example by structure
 
-Select the main example in the [Type router](../SKILL.md#type-router) before
-loading its content, using the request and repository metadata already needed
-for source inspection. Selection fits the existing read batch and needs no extra
-message, command, or repository-wide scan. For mixed or unclear tasks, use the
-requested responsibilities and entry points as they become known in normal
-inspection; keep their actual roles. Read another example when a necessary
-capability remains unexplained. Examples teach shape, not facts: a library need
-not acquire filesystem nodes, and finished showcases still follow the
-first-draft automatic-routing rule.
+The [Type router](../SKILL.md#type-router) lists examples of the supported shapes. Consult one when it clarifies a field or a layout choice. Include only roles and relationships supported by the requested source.
 
 ## Author from evidence
 

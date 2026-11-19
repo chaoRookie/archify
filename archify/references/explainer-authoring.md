@@ -2,11 +2,11 @@
 
 An explainer turns an answer with a conclusion and some structure (an explanation, comparison, decision, diagnosis, review or plan) into one page. The page leads with the conclusion and shows the reasoning as panels: diagrams, tables, steps and short text. When to make one, and the opt-in modes, are in the Skill under “Choose the artifact”. A request to draw a system uses a native diagram type.
 
-This guide is the complete draft language. Write the draft from it directly.
+Use the forms below when they help answer the question.
 
 ## Draft
 
-Write one Markdown file, `candidate.archify.md`. The first paragraph after the title is the direct conclusion. A flat list immediately after it gives up to four reasons. Each `##` heading starts a panel.
+Write one Markdown file, `candidate.archify.md`. The first paragraph after the title is the direct conclusion. An optional flat list immediately after it gives the reasons needed to support the conclusion. Each `##` heading starts a panel.
 
 ```md
 # Why does the first HTTPS visit take an extra round trip? {#tls-first-visit}
@@ -49,16 +49,16 @@ Deliver it with the command under [Delivery](#delivery).
 
 ### Rules that keep a draft valid
 
-- IDs are unique across the whole document: panels, blocks, diagrams and steps share one namespace. Give a block an `id` only when a step, link or patch targets it; omit it on callouts, facts and lists. Name a diagram after its content (`handshake-flow`), not after its panel (`handshake`).
+- IDs are unique across the whole document: panels, blocks, diagrams and steps share one namespace. Explicit IDs are useful for step targets, links and patches. Name a diagram after its content (`handshake-flow`), not after its panel (`handshake`).
 - Prose is plain text. Wrap file paths, globs, `<placeholders>`, operators and code in backticks: a bare `<`, `>` or `*` in prose fails as HTML or emphasis. Inline code is shown literally.
 - Directive rows are pipe rows, one per line, each with the documented number of cells: `| first | second |`. Write a literal pipe inside a cell as `\|`. A blank line or the next `##` or `@` line ends the rows.
 - Directive arguments are `key=value`; quote values with spaces using double quotes and JSON escaping.
-- Draw native diagrams with the compact rows below. Inline JSON specs are for exceptional cases only.
+- Compact rows cover common diagram shapes. Native specs expose mode-specific fields and layout controls.
 - Nested lists, raw HTML and other Markdown extensions fail with a located diagnostic that names the line, component and a repair example.
 
 ## Choose the form by the shape of the information
 
-A diagram replaces the paragraph that would describe it. When the answer involves relationships, a flow, an exchange over time, a hierarchy, a history or a data model, draw it. A typical page has the conclusion, one diagram and one or two tables or step lists.
+Choose the form that makes the answer easy to check. For example, a sequence diagram can show who replied to whom, while a table can preserve exact values and unknowns.
 
 | Shape of the information | Form |
 | --- | --- |
@@ -79,9 +79,9 @@ A diagram replaces the paragraph that would describe it. When the answer involve
 | A change to code | `@diff` or a ```` ```diff ```` fence |
 | A command, config or code that does not exist yet | Plain fence |
 
-Steps that walk through a diagram belong in the diagram's panel: the page reads them beside it, each step lighting its part, and the reader can step through them. Title each step with the label of the node it points at, so the text and the diagram match at a glance; the detail column says what to do there.
+Steps can share a panel with the diagram they explain: the page reads them beside it, each step lighting its part, and the reader can step through them. Use the actual node or edge when linking a step. A step without a matching target can stand on its own.
 
-A small answer gets a small page: the conclusion plus one or two panels. A how-it-works, diagnosis or checklist question usually needs three to five.
+Choose the number and order of panels from the reader’s question and the evidence.
 
 ## Writing
 
@@ -89,13 +89,13 @@ Write for a reader who will act on the page and may check it. Use the user's lan
 
 - The conclusion is read first; every panel after it supports, qualifies or applies it. Stop once nothing is left to support.
 - Cover what the reader needs to act on the answer: the mechanism behind the conclusion, how to check it, and the cases where it does not hold. The next question a careful reader would ask gets a panel, a table row or a line in scope; a fact the reader could get wrong without it is not optional.
-- Each panel takes one question and each sentence makes one claim. A claim a table or diagram already shows is not restated; the text adds its reason or exception.
+- Give each panel a clear purpose. A claim a table or diagram already shows is not restated; the text adds its reason or exception.
 - Keep one term per thing across the title, panels, diagram labels and table headers, and prefer the reader's own term. The page links a name in the text to the node with that label, so a reader can point at it in the diagram.
 - Give results with their evidence: a number with its unit, a file position, a source. When a value is unknown or estimated, say so in scope.
 - Cite a `@source` for each claim the reader cannot check alone: protocol details, thresholds, benchmark figures, API behaviour. A rule of thumb without a source is labelled as one, or left out.
 - Recompute every derived number before delivery and show the arithmetic once: “990 of 1000 requests at 80 ms → P99 = 80 ms; 11 slow → P99 = 600 ms.” Totals in tables add up.
 - Phrase an action as an imperative with its trigger in front: “If the migration reports a schema mismatch, roll it back before retrying.”
-- When the reader must act or verify, end with a checklist panel: `- [ ] item`, one concrete check per item. Readers tick items on the page.
+- When checking off actions is helpful, a task list can use `- [ ] item`, one concrete check per item. Readers tick items on the page.
 
 English: short sentences (under about 25 words), common words (use, before, to, because), active voice with a named actor.
 
@@ -103,7 +103,7 @@ English: short sentences (under about 25 words), common words (use, before, to, 
 
 ## Compact native diagrams
 
-Write `@<type> id=<diagram-id> title="..."` followed by pipe rows. Each compiles to a full native Archify diagram, with native validation and layout, and opens in the full Viewer from the page. A document holds up to four native diagrams.
+Write `@<type> id=<diagram-id> title="..."` followed by pipe rows. Each compiles to a full native Archify diagram, with native validation and layout, and opens in the full Viewer from the page. Use the diagrams needed for the requested relationships.
 
 Any node, actor or entity row may end with a `source:<id>` cell naming a declared `@source`; hovering that node shows the source, and for a repository file its pinned lines, so a code diagram doubles as a code tour.
 
@@ -134,9 +134,9 @@ Actor rows: `actor <id> | label | type`. Message rows: `from | to | label | vari
 | trace > fix | cause found | emphasis |
 ```
 
-Node rows: `id | label | type?`. Edge rows: `from > to | label? | variant?`. Nodes widen to fit their labels, so a node label names the step in a few words (up to about 10 Chinese characters or 4 English words) and `@steps` carries the detail. Keep edge labels to one or two words. A node label ending in `?` is drawn as a decision; label its outgoing edges with the answers (`yes`, `no`, `是`, `否`).
+Node rows: `id | label | type?`. Edge rows: `from > to | label? | variant?`. Nodes widen to fit their labels, so a node label names the step in a few words (up to about 10 Chinese characters or 4 English words) and `@steps` carries the detail. Keep the meaning of each edge label, including its condition or protocol. A node label ending in `?` is drawn as a decision. Use known outcomes for its outgoing labels when available.
 
-Group the steps of a process into phases: declare `lane <id> | label` rows, then give each workflow node its phase as a fourth cell. Up to six nodes draw as one row with the phase labels above it; a longer process wraps into one row per phase.
+To show process phases, declare `lane <id> | label` rows, then give each workflow node its phase as a fourth cell. Up to six nodes draw as one row with the phase labels above it; a longer process wraps into one row per phase.
 
 ```md
 @workflow id=p99-flow title="P99 triage"
@@ -151,7 +151,7 @@ Group the steps of a process into phases: declare `lane <id> | label` rows, then
 | sample > fix | cause | emphasis |
 ```
 
-Architecture allows twelve columns. Use `@architecture` for components that talk to each other and `@workflow` for steps a reader follows.
+Architecture shorthand supports up to twelve columns. Use native JSON with explicit placement for a larger geometry. A long workflow can use real lanes, native JSON or linked views with explicit handoffs. Use `@architecture` for components that talk to each other and `@workflow` for steps a reader follows.
 
 **`@tree`**: one row per node, `id | label | parent`; the root's parent is `-`.
 
@@ -171,7 +171,7 @@ Architecture allows twelve columns. Use `@architecture` for components that talk
 | alarm | 2026-10-01T10:12:00+08:00 | Error rate alarm | ops | alert |
 ```
 
-Shorthand timelines are labelled illustrative and display their times in UTC.
+Shorthand timelines are labelled illustrative and display their times in UTC. Keep date-only evidence in a dated list or table.
 
 **`@erd`**: entities, fields, then relationships.
 
@@ -205,7 +205,7 @@ xychart-beta
 
 Name each series (`bar "Before" [...]`) so the chart gets a legend. Bars show their values, and a pie legend shows each value with its share. Use `xychart-beta horizontal` for ranked items or long category names. When numbers carry the point, such as one value jumping while others stay flat, a before/after or a share, chart them so the contrast is seen at a glance; a table under the chart adds only the words each number needs. Put the contrast in one chart, such as mean, P50 and P99 before and after.
 
-When the numbers are in a CSV or JSON file next to the draft, chart the file instead of copying its values: `@chart type=bar|line|pie data=latency.csv x=day y=p50,p99 unit=ms title="..."`. `x` names the label column and `y` one value column per series (a pie uses the first). CSV needs a header row; JSON is an array of objects. The file is read and frozen at delivery, up to 60 rows (12 for a pie). A blank value is an error, not zero: fill it in, or leave the row out and say so in the caption.
+When the numbers are in a CSV or JSON file next to the draft, chart the file instead of copying its values: `@chart type=bar|line|pie data=latency.csv x=day y=p50,p99 unit=ms title="..."`. `x` names the label column and `y` one value column per series (a pie uses the first). CSV needs a header row; JSON is an array of objects. The file is read and frozen at delivery, up to 60 rows (12 for a pie). A blank value fails validation. Use a table to show missing observations or identify the charted subset in the caption and retain the missing rows alongside it.
 
 A chart states where its numbers come from the same way text does: measured, from a source, estimated or illustrative, in its caption or in scope. Quote every label that contains spaces or non-ASCII text. Flowcharts, sequences, class, ER, state, timeline and mind-map Mermaid use the native shorthand above, which Archify validates and lets readers explore.
 
@@ -216,7 +216,7 @@ A chart states where its numbers come from the same way text does: measured, fro
 | `@answer` | `scope="..."` | none |
 | `@meta` | `locale` (`en`, `zh-CN`, `zh-TW`, `es`, `ko`, `ar`), `quality_profile`, `style` (`clean`, `editorial`, `product`, `swiss`; readers can switch), `repo_url`, `repo_revision` | none |
 | `@source <id>` | `title`, `url`, or `path` with `lines=start:end` | none |
-| `@steps` | `id` | `id | title | detail? | diagram-id? | node? | from~to? | edge-ids?` (node and route are exclusive) |
+| `@steps` | `id`, `provenance` | `id | title | detail? | diagram-id? | node? | from~to? | edge-ids?` (node and route are exclusive) |
 | `@callout` | `id`, `level=note|warning|open-question`, `title` | one cell per row; rows join into paragraphs |
 | `@facts` | `id` | `label | value` |
 | `@metric` | `id`, `label`, `value`, `limit`, `unit`, `note`, `typical=true` | none; `value` or `limit` required |
@@ -228,7 +228,7 @@ A chart states where its numbers come from the same way text does: measured, fro
 | `@image` | `id`, `path`, `alt`, `caption` | none |
 | `@chart` | `type` (`bar`, `line`, `pie`), `data` (`.csv` or `.json`), `x`, `y`, `unit`, `title`, `id` | none |
 | `@<diagram type>` | `id`, `title`, `changes` | compact rows above |
-| `@diagram <type>` | `id`, `source`, `title` | none |
+| `@diagram <type>` | `id`, `source`, `title`, `provenance` | none |
 
 Plain paragraphs, flat lists and Markdown tables need no directive. A table's first header cell labels the row column; comparison cells may end with `{good:Label}`, `{caution:Label}` or `{bad:Label}`, and row labels with `{#row-id}`. Mark only the cells that decide the comparison, usually one or two per row; a badge in every cell reads as noise.
 
@@ -249,6 +249,10 @@ Pass `--repo-root /path/to/repository` for code excerpts. With it, every cited r
 
 `[5 ms](typical:Description of the value)` becomes a static footnote, including in print.
 
+## Playback and evidence
+
+For `@steps` or `@diagram`, `provenance=traced` identifies a sequence supported by a recorded trace. Use `derived` for an order inferred from source or a documented procedure, or `illustrative` for an example. Cite the supporting record or explain the inference. Animation speed and pauses are presentation time in every mode. Show measured durations only when the source records them.
+
 ## Panels and layout
 
 Prefer a specific question as each panel title. `{#id}` gives a stable ID for links and panel replacement; `{#id span=7}` fixes a width of 1–12 columns. Omit spans: the page measures each panel and plans the board, keeping source order with the conclusion top-left, giving each diagram enough width for readable labels, and keeping tables and code from clipping. Without JavaScript, below 1100 px and in print, static widths apply.
@@ -259,11 +263,11 @@ Prefer a specific question as each panel title. `{#id}` gives a stable ID for li
 node archify/bin/archify.mjs finalize explainer candidate.archify.md answer.html --json
 ```
 
-After a pass, reply in two or three lines: the conclusion, then a Markdown link to the page with a descriptive title. Do not list gates. When the user asked for this page and no `[archify explainer: ...]` rules line is in context, end with the one-line mode offer from the Skill's Output section.
+After a pass, give the conclusion and a descriptive link to the page. When the user asked for this page and no `[archify explainer: ...]` rules line is in context, end with the one-line mode offer from the Skill's Output section.
 
 Add `--repo-root <path>` when the draft uses `@code`. Finalize validates, atomically delivers and checks the HTML; it does not launch a browser, and its receipt records the browser gate as not run. A failure names the line, component, reason and a repair example; fix the draft and rerun to the same output path.
 
-Writing warnings apply the [Writing](#writing) rules: sentences over 50 Chinese units or 28 English words, paragraphs over four sentences or 120 units, chained “的”, light verbs, set phrases, openers and sign-offs, unbounded quantities, “以上/以下/以内” after a number, long English words with a common equivalent, qualifiers such as “示例”, “未实测” or “illustrative” outside scope, a mostly bold conclusion and a scope over 50 units. Each warning names the matched text and a repair; fix it when the repair keeps the meaning. `--writing warn|strict|off` sets the severity.
+Advisory writing diagnostics flag patterns such as sentences over 50 Chinese units or 28 English words, paragraphs over four sentences or 120 units, chained “的”, light verbs, set phrases, openers and sign-offs, unbounded quantities, “以上/以下/以内” after a number, long English words with a common equivalent, qualifiers such as “示例”, “未实测” or “illustrative” outside scope, a mostly bold conclusion and a scope over 50 units. Writing warnings identify possible readability improvements. Keep wording when changing it would lose a qualification, term or fact. `--writing off` suppresses writing suggestions. Both `warn` and the compatible `strict` spelling report style preferences as warnings.
 
 ## Panel replacement
 
