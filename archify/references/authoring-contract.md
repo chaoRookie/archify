@@ -506,10 +506,14 @@ bad outcome; `neutral` for parked states and outcomes that are neither;
 Mermaid `stateDiagram`, `[*] -->` names the first `mainPath` state, a state
 with `--> [*]` is an outcome (`success`, `failure`, or `neutral`; it is drawn as
 final when it has no other outgoing transition), and `<<choice>>` becomes a
-`decision` state. Flatten a composite `state X { ... }` into its inner states
-and repeat its exit from each of them with one label; consecutive main-path
-phases sharing that exit are framed automatically. Concurrent regions (`--`)
-have no lifecycle form: draw one lifecycle per region.
+`decision` state. Keep a composite state's exit attached to its recorded owner. Flatten it only
+when the source establishes equivalent transitions from the affected inner states.
+Lifecycle can frame consecutive main-path phases with evidenced shared exits.
+For a branch, loop or concurrent region that a single view cannot express, keep
+the guards, return targets, fork and join conditions in a transition table or
+linked detail views. Separate region diagrams can show parallel work when the
+handoffs and synchronization are explicit. Playback order describes the
+presentation unless supported by a recorded execution.
 
 ## Repository evidence
 
