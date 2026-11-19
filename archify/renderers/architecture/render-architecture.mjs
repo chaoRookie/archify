@@ -423,7 +423,7 @@ function resolveBoundaryTitles() {
   const finalViewBoxWidth = resolvedViewBoxWidth(candidateBoundaries);
   return {
     boundaries: candidateBoundaries,
-    readabilityProblem: `[composition/desktop-readability] Boundary title layout did not converge after ${maximumIterations} iterations for the final ${finalViewBoxWidth}px viewBox — shorten boundary labels, provide a wider authored viewBox, or move wrapped components closer to the left edge.`,
+    readabilityProblem: `[composition/desktop-readability] Boundary title layout did not converge after ${maximumIterations} iterations for the final ${finalViewBoxWidth}px viewBox — use a wider authored viewBox or move wrapped components closer to the left edge.`,
   };
 }
 
@@ -567,14 +567,13 @@ function validateArchitecture() {
     }
     const estLabelW = textUnits(c.label) * 6.6;
     if (estLabelW > c.width + 8) {
-      const message = `Label "${c.label}" (~${Math.round(estLabelW)}px) is wider than component "${c.id}" (${c.width}px) — shorten the label or widen size.`;
+      const message = `Label "${c.label}" (~${Math.round(estLabelW)}px) is wider than component "${c.id}" (${c.width}px) — widen size to fit the full label.`;
       diagnostics.push({
         code: 'architecture/component-label-overflow', severity: 'error', message,
         subject: { diagramType: 'architecture', nodeId: c.id },
         evidence: { text: c.label, estimatedWidthPx: Math.round(estLabelW), availableWidthPx: c.width },
         supportedFixes: [
-          `shorten component "${c.id}" label "${c.label}" while preserving its meaning`,
-          `or widen component "${c.id}" to at least ${Math.ceil(estLabelW - 8)}px`,
+          `widen component "${c.id}" to at least ${Math.ceil(estLabelW - 8)}px`,
         ],
       });
       problems.push(message);
@@ -592,14 +591,13 @@ function validateArchitecture() {
       const minimumW = minimumNodeTextWidth(value, minimum);
       if (minimumW > availableTextW) {
         const fieldKey = field.toLowerCase();
-        const message = `${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but component "${c.id}" provides ${availableTextW}px — shorten the ${fieldKey} or widen size.`;
+        const message = `${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but component "${c.id}" provides ${availableTextW}px — widen size to fit the full ${fieldKey}.`;
         diagnostics.push({
           code: `architecture/component-${fieldKey}-overflow`, severity: 'error', message,
           subject: { diagramType: 'architecture', nodeId: c.id },
           evidence: { text: value, minimumFontPx: minimum, requiredWidthPx: Math.ceil(minimumW), availableWidthPx: availableTextW },
           supportedFixes: [
-            `shorten component "${c.id}" ${fieldKey} "${value}" while preserving its meaning`,
-            `or widen component "${c.id}" so the ${fieldKey} keeps at least ${Math.ceil(minimumW)}px of text width at the ${minimum}px legible minimum`,
+            `widen component "${c.id}" so the ${fieldKey} keeps at least ${Math.ceil(minimumW)}px of text width at the ${minimum}px legible minimum`,
           ],
         });
         problems.push(message);
@@ -632,7 +630,16 @@ function validateArchitecture() {
   // Boundaries: every wrapped id must exist; the computed box must stay in view.
   for (const boundary of asArray(arch.boundaries)) {
     for (const id of asArray(boundary.wraps)) {
-      if (!components.has(id)) problems.push(`Boundary "${boundary.label}" wraps unknown component "${id}".`);
+      if (!components.has(id)) {
+        const message = `Boundary "${boundary.label}" wraps unknown component "${id}".`;
+        problems.push(message);
+        diagnostics.push({
+          code: 'layout/constraint', category: 'fact-error', severity: 'error', message,
+          subject: { diagramType: 'architecture', boundary: boundary.label, component: id },
+          evidence: { referencedId: id },
+          supportedFixes: ['Check the source for the component and its actual boundary membership.'],
+        });
+      }
     }
   }
   const viewBoxRect = { x: 0, y: 0, width: viewBox[0], height: viewBox[1] };
@@ -642,23 +649,23 @@ function validateArchitecture() {
       problems.push(
         `Boundary label "${boundary.label}" needs ~${Math.ceil(boundary.title.minimumWidth)}px to fit at the `
         + `${Number(boundary.title.minimumFontSize.toFixed(2))}px desktop-readable source minimum, but its frame provides ${Math.floor(boundary.title.availableWidth)}px — `
-        + 'shorten the boundary label, increase pad, or widen the wrapped component layout.',
+        + 'increase pad or widen the wrapped component layout.',
       );
     }
     if (!rectContains(boundary, boundary.title)) {
       problems.push(
-        `Boundary label "${boundary.label}" extends outside its final frame — shorten the label or increase boundary pad.`,
+        `Boundary label "${boundary.label}" extends outside its final frame — increase boundary pad.`,
       );
     }
     if (!rectContains(viewBoxRect, boundary.title)) {
       problems.push(
-        `Boundary label "${boundary.label}" extends outside the viewBox — move wrapped components away from the canvas edge, shorten the label, or increase the viewBox.`,
+        `Boundary label "${boundary.label}" extends outside the viewBox — move wrapped components away from the canvas edge or increase the viewBox.`,
       );
     }
     for (const component of components.values()) {
       if (!rectsOverlap(boundary.title, component)) continue;
       problems.push(
-        `Boundary label "${boundary.label}" overlaps component "${component.id}" — move the component, increase boundary title space, or shorten the label.`,
+        `Boundary label "${boundary.label}" overlaps component "${component.id}" — move the component or increase boundary title space.`,
       );
     }
   }
@@ -669,7 +676,7 @@ function validateArchitecture() {
       const right = boundaries[rightIndex];
       if (enforcesBoundaryTitleComposition && rectsOverlap(left.title, right.title)) {
         problems.push(
-          `Boundary labels "${left.label}" and "${right.label}" overlap — shorten a label or increase boundary title space.`,
+          `Boundary labels "${left.label}" and "${right.label}" overlap — increase boundary title space.`,
         );
       }
       // Ordinary architecture boundaries are sets, not an implied ownership
@@ -799,16 +806,6 @@ function validateArchitecture() {
     for (const [field, endpoint] of [['from', 'source'], ['to', 'target']]) {
       if (components.has(conn[field])) continue;
       const message = `Connection "${conn.label || conn[field]}" references unknown ${endpoint} "${conn[field]}".`;
-      const otherId = conn[field === 'from' ? 'to' : 'from'];
-      const neighbors = new Set();
-      for (const edge of connectionList) {
-        if (edge === conn) continue;
-        if (edge.from === otherId) neighbors.add(edge.to);
-        if (edge.to === otherId) neighbors.add(edge.from);
-      }
-      const candidates = knownComponentIds
-        .filter((id) => id !== otherId)
-        .sort((a, b) => (neighbors.has(b) - neighbors.has(a)) || a.localeCompare(b));
       diagnostics.push({
         code: 'architecture/unknown-endpoint', severity: 'error', message,
         subject: {
@@ -819,10 +816,9 @@ function validateArchitecture() {
           to: conn.to,
         },
         evidence: { endpoint, unknownNodeId: conn[field], availableNodeIds: knownComponentIds },
-        supportedFixes: candidates.slice(0, 3).map((id) => `set /connections/${connIndex}/${field} to verified node id "${id}"`),
+        supportedFixes: ['Trace this relationship in the source and declare or reference its actual endpoint.'],
       });
       problems.push(message);
-      problems.push(`Connection "${conn.label || conn[field]}" endpoint "${conn[field]}" does not name a declared component.`);
     }
     if (components.has(conn.from) && components.has(conn.to)) {
       const routed = pathFor(conn);

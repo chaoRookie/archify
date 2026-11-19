@@ -55,9 +55,9 @@ const layout = {
 function validateStructure() {
   const problems = [];
   const details = [];
-  const fail = (code, message, subject, evidence, supportedFixes) => {
+  const fail = (code, message, subject, evidence, supportedFixes, category = 'fact-error') => {
     problems.push(message);
-    details.push({ code, severity: 'error', message, subject: { diagramType: 'tree', ...subject }, evidence, supportedFixes });
+    details.push({ code, category, severity: 'error', message, subject: { diagramType: 'tree', ...subject }, evidence, supportedFixes });
   };
   const nodes = asArray(tree.nodes);
   const byId = new Map();
@@ -71,7 +71,7 @@ function validateStructure() {
     if (node.parent !== undefined && !byId.has(node.parent)) {
       fail('tree/missing-parent', `Node "${node.id}" names parent "${node.parent}", which is not declared.`,
         { path: `/nodes/${index}/parent`, nodeId: node.id }, { parent: node.parent },
-        [`Declare a node with id "${node.parent}".`, 'Point parent at an existing node.', 'Remove parent to make this the root.']);
+        ['Check the source for this node’s actual parent and declare or reference that parent.']);
     }
   }
   const roots = nodes.filter((node) => node.parent === undefined);
@@ -80,7 +80,7 @@ function validateStructure() {
       ? `A tree has one root, but ${roots.length} nodes have no parent: ${roots.map((node) => `"${node.id}"`).join(', ')}.`
       : 'A tree has one root, but every node names a parent.',
     { path: '/nodes' }, { roots: roots.map((node) => node.id) },
-    roots.length ? ['Give all but one of these nodes a parent.', 'Add a single root that the top-level nodes name as parent.'] : ['Remove parent from the root node.']);
+    ['Check the parent relationships. For independent roots, use one tree per root. For a graph without a root, use an architecture diagram or relationship table.'], 'capability-limit');
   }
   // Walk each node's parent chain. With one root and every parent declared,
   // the only way a node can fail to reach the root is a cycle in its chain,
@@ -100,7 +100,7 @@ function validateStructure() {
         reported.add(key);
         fail('tree/cycle', `Parent links form a cycle: ${[...cycle, cycle[0]].map((id) => `"${id}"`).join(' -> ')}.`,
           { path: `/nodes/${index}/parent`, nodeId: node.id }, { cycle },
-          ['Point one node in the cycle at a parent outside it.']);
+          ['Verify the parent relationships. If the cycle is real, preserve its links in an architecture diagram or relationship table.'], 'capability-limit');
       }
     }
   }

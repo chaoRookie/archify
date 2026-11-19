@@ -114,7 +114,7 @@ test('render layout rejection exposes the existing diagnostic and preserves an e
   fs.writeFileSync(output, 'trusted artifact');
   const result = run([cli, 'render', 'architecture', input, output], cwd);
   assertHumanFailure(result, 'architecture/component-label-overflow');
-  assert.match(result.stderr, /shorten the label or widen size/);
+  assert.match(result.stderr, /widen size/);
   assert.equal(fs.readFileSync(output, 'utf8'), 'trusted artifact');
   for (const command of ['validate', 'deliver']) {
     const machine = run([cli, command, 'architecture', input, ...(command === 'deliver' ? [output] : []), '--json'], cwd);
@@ -141,8 +141,9 @@ test('render layout rejection exposes the existing diagnostic and preserves an e
     const layout = failure.diagnostics.find(entry => entry.code === 'architecture/component-label-overflow');
     assert.equal(warning?.severity, 'warning');
     assert.equal(layout?.severity, 'error');
+    assert.equal(layout.category, 'capability-limit');
     assert.deepEqual(layout.subject, { diagramType: 'architecture', nodeId: 'node' });
-    assert.match(layout.message, /shorten the label or widen size/);
+    assert.match(layout.message, /widen size/);
     assert.ok(Array.isArray(layout.supportedFixes));
     assert.equal(fs.readFileSync(output, 'utf8'), 'trusted artifact');
   }
@@ -250,17 +251,17 @@ test('a recorded layout diagnostic cannot hide a later unclassified exception', 
     assert.equal(result.status, 1);
     const receipt = JSON.parse(result.stderr);
     assert.deepEqual(receipt.diagnostics.map(d => d.code), ['internal/unclassified']);
-    assert.equal(receipt.diagnostics[0].message, 'later implementation defect');
+    assert.match(receipt.diagnostics[0].message, /later implementation defect$/);
   }
   const classified = run(['--input-type=module', '-e', setup + `throwDiagnosticError('layout rejected', [{ code: 'layout/constraint', message: 'final layout problem' }]);`], cwd, true);
   assert.equal(classified.status, 1);
-  assert.deepEqual(JSON.parse(classified.stderr).diagnostics.map(d => d.message), ['earlier layout problem', 'final layout problem']);
+  assert.deepEqual(JSON.parse(classified.stderr).diagnostics.map(d => d.message), ['[capability-limit] earlier layout problem', '[capability-limit] final layout problem']);
 });
 
 test('isolated diagnostic work preserves typed lookup without polluting later failures', t => {
   const script = `import assert from 'node:assert/strict';
     import { recordDiagnostic, throwDiagnosticProblems, rendererFailure, withIsolatedDiagnosticRecording } from ${JSON.stringify(diagnosticModule)};
-    const local = { code: 'composition/proper-crossing', severity: 'error', message: 'same problem',
+    const local = { code: 'composition/proper-crossing', category: 'capability-limit', severity: 'error', message: '[capability-limit] same problem',
       subject: { id: 'local' }, evidence: { point: [12, 34] }, supportedFixes: ['move local route'] };
     const outer = { ...local, subject: { id: 'outer' }, evidence: { point: [56, 78] }, supportedFixes: ['move outer route'] };
     function recover() {
@@ -288,7 +289,7 @@ test('isolated diagnostic work preserves typed lookup without polluting later fa
 test('nested isolated diagnostics restore each caller and retain earlier plus terminal failures', t => {
   const script = `import assert from 'node:assert/strict';
     import { recordDiagnostic, throwDiagnosticError, throwDiagnosticProblems, rendererFailure, withIsolatedDiagnosticRecording } from ${JSON.stringify(diagnosticModule)};
-    const detail = id => ({ code: 'layout/constraint', severity: 'error', message: 'same problem',
+    const detail = id => ({ code: 'layout/constraint', category: 'capability-limit', severity: 'error', message: '[capability-limit] same problem',
       subject: { id }, evidence: { node: id }, supportedFixes: ['move ' + id] });
     const outer = detail('outer'), local = detail('local'), nested = detail('nested');
     function recover(expected) {
@@ -302,7 +303,7 @@ test('nested isolated diagnostics restore each caller and retain earlier plus te
       recover(local);
     });
     recover(outer);
-    const terminal = { ...detail('terminal'), message: 'terminal problem' };
+    const terminal = { ...detail('terminal'), message: '[capability-limit] terminal problem' };
     try { throwDiagnosticError('rejected', [terminal]); assert.fail('terminal must throw'); }
     catch (error) { assert.deepEqual(rendererFailure(error).diagnostics, [outer, terminal]); }`;
   const result = run(['--input-type=module', '-e', script], workspace(t), true);
@@ -312,7 +313,7 @@ test('nested isolated diagnostics restore each caller and retain earlier plus te
 test('isolated diagnostic exceptions restore recording and preserve error identity', t => {
   const script = `import assert from 'node:assert/strict';
     import { recordDiagnostic, throwDiagnosticError, rendererFailure, withIsolatedDiagnosticRecording } from ${JSON.stringify(diagnosticModule)};
-    const detail = id => ({ code: 'layout/constraint', severity: 'error', message: id + ' problem',
+    const detail = id => ({ code: 'layout/constraint', category: 'capability-limit', severity: 'error', message: '[capability-limit] ' + id + ' problem',
       subject: { id }, evidence: { node: id }, supportedFixes: ['move ' + id] });
     const earlier = detail('earlier'), abandoned = detail('abandoned'), terminal = detail('terminal');
     recordDiagnostic(earlier);
@@ -344,7 +345,7 @@ test('isolated diagnostic scopes compose with recording suppression in either or
   for (const composition of ['scope inside suppression', 'suppression inside scope']) {
     const script = `import assert from 'node:assert/strict';
       import { recordDiagnostic, throwDiagnosticError, rendererFailure, withIsolatedDiagnosticRecording, withDiagnosticRecordingSuppressed } from ${JSON.stringify(diagnosticModule)};
-      const detail = id => ({ code: 'layout/constraint', severity: 'error', message: id + ' problem',
+      const detail = id => ({ code: 'layout/constraint', category: 'capability-limit', severity: 'error', message: '[capability-limit] ' + id + ' problem',
         subject: { id }, evidence: {}, supportedFixes: [] });
       const earlier = detail('earlier'), terminal = detail('terminal');
       recordDiagnostic(earlier);

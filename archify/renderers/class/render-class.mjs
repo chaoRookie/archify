@@ -684,10 +684,10 @@ function validateClassDiagram() {
     const needed = headerWidth(type);
     if (placed && needed > placed.width) {
       fail(detail('class/title-text-capacity',
-        `Type "${type.id}" title "${type.label}" needs ${needed}px but the type is ${placed.width}px wide — remove or raise the authored width, or shorten the title.`,
+        `Type "${type.id}" title "${type.label}" needs ${needed}px but the type is ${placed.width}px wide — use automatic width or widen the type to fit the title.`,
         { path: `/types/${index}/width`, typeId: type.id },
         { label: type.label, width: placed.width, requiredWidth: needed },
-        ['Remove the authored width so the type sizes itself.', `Set width to at least ${needed}.`, 'Shorten the type title.']));
+        ['Remove the authored width so the type sizes itself.', `Set width to at least ${needed}.`]));
     }
   }
 
@@ -707,7 +707,7 @@ function validateClassDiagram() {
       continue;
     }
     if (relationship.from === relationship.to) {
-      problems.push(`Relationship ${index}${id} connects type "${relationship.from}" to itself — describe the self-reference as a member type or in a card.`);
+      problems.push(`Relationship ${index}${id} connects type "${relationship.from}" to itself — this renderer cannot draw a self-reference. Preserve the relationship kind and both endpoints in a card or table.`);
       continue;
     }
     // The hollow triangle claims a supertype; the claim has to agree with the
@@ -717,7 +717,7 @@ function validateClassDiagram() {
         `Relationship ${index}${id} "${relationship.from}" realizes "${relationship.to}", but realization runs from a non-interface type to an interface (here ${from.kind} -> ${to.kind}). Use inheritance for class-to-class or interface-to-interface extension.`,
         { path: `/relationships/${index}`, relationshipIndex: index },
         { from: relationship.from, fromKind: from.kind, to: relationship.to, toKind: to.kind },
-        ['Use kind "inheritance" for extension between two classes or two interfaces.', 'Point the realization at the interface it implements.']));
+        ['Check the declarations for the actual types and relationship. Use inheritance only for evidenced extension and realization only for a verified implementation.']));
     }
     if (relationship.kind === 'inheritance' && (from.kind === 'interface') !== (to.kind === 'interface')) {
       fail(detail('class/inheritance-kind',
@@ -740,7 +740,7 @@ function validateClassDiagram() {
       `Inheritance forms a cycle: ${cycle.map((id) => `"${id}"`).join(' -> ')}. A type cannot be its own supertype.`,
       { path: '/relationships', typeId: cycle[0] },
       { cycle },
-      ['Remove or reverse one inheritance relationship in the cycle.']));
+      ['Check each inheritance relationship against its declaration and correct the inconsistent claim.']));
   }
 
   // Busy sides can leave less room than a marker is tall: the router spreads

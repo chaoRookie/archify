@@ -781,7 +781,7 @@ function semanticContractDiagnostics(workflow) {
       `Workflow semantic contract references unknown node "${id}" at ${path}.`,
       { node: id, path },
       { knownNodes: [...nodeIds] },
-      [`replace "${id}" with an existing node id`, 'add the missing node before compiling'],
+      ['Trace the referenced role in the source and use the id of the node that actually performs it.'],
     ));
   }
   if (diagnostics.length) return diagnostics;
@@ -795,7 +795,7 @@ function semanticContractDiagnostics(workflow) {
         `Workflow node "${node}" has no incoming edge and is not declared in semanticChecks.allowedRoots.`,
         { node, path: '/semanticChecks/allowedRoots' },
         { incomingEdges: 0, allowedRoots: [...allowed] },
-        [`add the missing incoming edge to "${node}"`, `declare "${node}" in semanticChecks.allowedRoots if it is an intentional source`],
+        [`trace the incoming path to "${node}" and include its evidenced predecessor, if any`, `declare "${node}" in semanticChecks.allowedRoots if it is an intentional source`],
       ));
     }
   }
@@ -809,7 +809,7 @@ function semanticContractDiagnostics(workflow) {
         `Workflow node "${node}" has no outgoing edge and is not declared in semanticChecks.allowedTerminals.`,
         { node, path: '/semanticChecks/allowedTerminals' },
         { outgoingEdges: 0, allowedTerminals: [...allowed] },
-        [`add the missing outgoing edge from "${node}"`, `declare "${node}" in semanticChecks.allowedTerminals if it is an intentional sink`],
+        [`trace the outgoing path from "${node}" and include its evidenced successor, if any`, `declare "${node}" in semanticChecks.allowedTerminals if it is an intentional sink`],
       ));
     }
   }
@@ -1022,7 +1022,7 @@ function workflowNodeTextProblems(node, nodeTextFit) {
   const problems = [];
   const estLabelW = textUnits(node.label) * 6.8;
   if (estLabelW > node.width + 6) {
-    problems.push(`Label "${node.label}" (~${Math.round(estLabelW)}px) is wider than component "${node.id}" (${node.width}px) — shorten the label or increase node.width.`);
+    problems.push(`Label "${node.label}" (~${Math.round(estLabelW)}px) is wider than component "${node.id}" (${node.width}px) — increase node.width to fit the full label.`);
   }
   const brandRailProblem = brandTopRailProblem(node, node.width, nodeTextFit.labelMinimum);
   if (brandRailProblem) problems.push(brandRailProblem);
@@ -1034,7 +1034,7 @@ function workflowNodeTextProblems(node, nodeTextFit) {
     if (!value) continue;
     const minimumW = minimumNodeTextWidth(value, minimum);
     if (minimumW > availableTextW) {
-      problems.push(`${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but node "${node.id}" provides ${availableTextW}px — shorten the ${field.toLowerCase()} or increase node.width.`);
+      problems.push(`${field} "${value}" needs ~${Math.ceil(minimumW)}px at the ${minimum}px legible minimum, but node "${node.id}" provides ${availableTextW}px — increase node.width to fit the full text.`);
     }
   }
   return problems;
@@ -1598,33 +1598,6 @@ const edgeIndexByEdge = new Map(asArray(workflow.edges).map((edge, index) => [ed
     }).ok);
     if (fixResults.size < 128) fixResults.set(key, accepted);
     return accepted;
-  }
-
-  function repointReferences(document, unknownId, nodeId) {
-    for (const entry of asArray(document.edges)) {
-      if (entry.from === unknownId) entry.from = nodeId;
-      if (entry.to === unknownId) entry.to = nodeId;
-    }
-    if (Array.isArray(document.mainPath)) {
-      document.mainPath = document.mainPath.map((id) => (id === unknownId ? nodeId : id));
-    }
-  }
-
-  // repointReferences verifies repointing every reference together; suggestions
-  // must list that same complete edit set so applying them verbatim is what was
-  // verified. Indexes follow the emitter conventions: edges use the
-  // sourceIndexes space, mainPath the canonical workflow's.
-  function unknownIdReferenceFixes(unknownId, nodeId) {
-    const fixes = [];
-    asArray(qualityResolvedWorkflow.edges).forEach((entry, index) => {
-      for (const field of ['from', 'to']) {
-        if (entry[field] === unknownId) fixes.push(`set /edges/${index}/${field} to verified node id "${nodeId}"`);
-      }
-    });
-    asArray(workflow.mainPath).forEach((id, index) => {
-      if (id === unknownId) fixes.push(`set /mainPath/${index} to verified node id "${nodeId}"`);
-    });
-    return fixes;
   }
 
 const { enforceLegacyColumnCapacity } = createLegacyCapacityRepair({
@@ -2750,7 +2723,14 @@ function validateWorkflow() {
 
   for (const node of nodes.values()) {
     if (!laneIds.has(node.lane)) {
-      problems.push(`Node "${node.id}" uses unknown lane "${node.lane}".`);
+      const message = `Node "${node.id}" uses unknown lane "${node.lane}".`;
+      problems.push(message);
+      workflowDiagnostics.push({
+        code: 'workflow/unknown-node-lane', category: 'fact-error', severity: 'error', message,
+        subject: { diagramType: 'workflow', node: node.id },
+        evidence: { unknownLaneId: node.lane, availableLaneIds: [...laneIds] },
+        supportedFixes: ['Trace the owner or phase of this action and declare or reference its actual lane.'],
+      });
       continue;
     }
     if (!Number.isInteger(node.col) || node.col < 0 || node.col >= layout.colXs.length) {
@@ -2788,7 +2768,7 @@ function validateWorkflow() {
     const estLabelW = textUnits(phase.label) * 5.6;
     const width = phaseSpan(phase).width;
     if (estLabelW > width + 8) {
-      problems.push(`Phase label "${phase.label}" (~${Math.round(estLabelW)}px) is wider than its ${Math.round(width)}px span — shorten the label or widen the phase range.`);
+      problems.push(`Phase label "${phase.label}" (~${Math.round(estLabelW)}px) is wider than its ${Math.round(width)}px span — give the phase more layout space while preserving its steps and label.`);
     }
   }
   phaseRanges.sort((a, b) => a.fromCol - b.fromCol || a.toCol - b.toCol);
@@ -2803,7 +2783,14 @@ function validateWorkflow() {
 
   for (const group of asArray(workflow.groups)) {
     if (!laneIds.has(group.lane)) {
-      problems.push(`Group "${group.id}" uses unknown lane "${group.lane}".`);
+      const message = `Group "${group.id}" uses unknown lane "${group.lane}".`;
+      problems.push(message);
+      workflowDiagnostics.push({
+        code: 'workflow/unknown-group-lane', category: 'fact-error', severity: 'error', message,
+        subject: { diagramType: 'workflow', group: group.id },
+        evidence: { unknownLaneId: group.lane, availableLaneIds: [...laneIds] },
+        supportedFixes: ['Trace the group’s ownership or phase and reference the lane supported by the source.'],
+      });
       continue;
     }
     if (!Number.isInteger(group.fromCol) || !Number.isInteger(group.toCol)) {
@@ -2953,12 +2940,8 @@ function validateWorkflow() {
           evidence: {
             unknownNodeId: id,
             availableNodeIds: candidates,
-            fixVerification: 'each candidate was verified by applying every listed repoint together and recompiling',
           },
-          supportedFixes: candidates
-            .filter((nodeId) => acceptsFix((document) => repointReferences(document, id, nodeId)))
-            .slice(0, 3)
-            .flatMap((nodeId) => unknownIdReferenceFixes(id, nodeId)),
+          supportedFixes: ['Trace the main path in the source and reference the evidenced node.'],
         });
       }
     }
@@ -2970,10 +2953,17 @@ function validateWorkflow() {
       if (!from || !to) continue;
       const linked = workflow.edges.some((edge) => edge.from === fromId && edge.to === toId);
       if (!linked) {
-        problems.push(`mainPath step "${fromId}" -> "${toId}" has no matching edge — add the edge or remove the pair from mainPath.`);
+        const message = `mainPath step "${fromId}" -> "${toId}" has no matching edge.`;
+        problems.push(message);
+        workflowDiagnostics.push({
+          code: 'workflow/main-path-gap', category: 'fact-error', severity: 'error', message,
+          subject: { diagramType: 'workflow', path: `/mainPath/${i}` },
+          evidence: { from: fromId, to: toId },
+          supportedFixes: ['Check for the actual transition or intervening steps and preserve their order.'],
+        });
       }
       if (to.col < from.col) {
-        problems.push(`mainPath step "${fromId}" -> "${toId}" moves backward from col ${from.col} to ${to.col} — use a return edge outside mainPath for loops.`);
+        problems.push(`mainPath step "${fromId}" -> "${toId}" moves backward from col ${from.col} to ${to.col} — adjust the column placement or show the actual return as an edge when this is a loop.`);
       }
     }
   }
@@ -3038,12 +3028,6 @@ function validateWorkflow() {
 function validateReadableInputsBeforeRouting() {
   if (workflow.schema_version !== 2) return;
   const fail = (diagnostic) => throwDiagnosticError(diagnostic.message, [diagnostic]);
-  const unusedId = (base, used) => {
-    for (let suffix = 2; ; suffix += 1) {
-      const candidate = `${base}-${suffix}`;
-      if (!used.has(candidate)) return candidate;
-    }
-  };
   const authoredLanes = [...workflow.lanes].sort((left, right) => (
     sourceIndexes.lanes.get(left) - sourceIndexes.lanes.get(right)
   ));
@@ -3059,11 +3043,6 @@ function validateReadableInputsBeforeRouting() {
     const laneIndex = sourceIndexes.lanes.get(lane);
     if (firstLaneIndex.has(lane.id)) {
       const message = `Workflow lane id "${lane.id}" is duplicated.`;
-      const replacement = unusedId(lane.id, new Set(workflow.lanes.map(({ id }) => id)));
-      const canonicalLaneIndex = workflow.lanes.indexOf(lane);
-      const supportedFixes = acceptsFix((document) => {
-        document.lanes[canonicalLaneIndex].id = replacement;
-      }) ? [`rename /lanes/${laneIndex}/id to verified unique id "${replacement}"`] : [];
       fail({
         code: 'workflow/duplicate-lane-id',
         severity: 'error',
@@ -3074,7 +3053,7 @@ function validateReadableInputsBeforeRouting() {
           firstPath: `/lanes/${firstLaneIndex.get(lane.id)}/id`,
           duplicatePath: `/lanes/${laneIndex}/id`,
         },
-        supportedFixes,
+        supportedFixes: ['Distinguish the two lane declarations using the source and update references to their verified owners.'],
       });
     }
     firstLaneIndex.set(lane.id, laneIndex);
@@ -3085,11 +3064,6 @@ function validateReadableInputsBeforeRouting() {
     const nodeIndex = sourceIndexes.nodes.get(node);
     if (firstNodeIndex.has(node.id)) {
       const message = `Workflow node id "${node.id}" is duplicated.`;
-      const replacement = unusedId(node.id, new Set(workflow.nodes.map(({ id }) => id)));
-      const canonicalNodeIndex = workflow.nodes.indexOf(node);
-      const supportedFixes = acceptsFix((document) => {
-        document.nodes[canonicalNodeIndex].id = replacement;
-      }) ? [`rename /nodes/${nodeIndex}/id to verified unique id "${replacement}"`] : [];
       fail({
         code: 'workflow/duplicate-node-id',
         severity: 'error',
@@ -3100,7 +3074,7 @@ function validateReadableInputsBeforeRouting() {
           firstPath: `/nodes/${firstNodeIndex.get(node.id)}/id`,
           duplicatePath: `/nodes/${nodeIndex}/id`,
         },
-        supportedFixes,
+        supportedFixes: ['Distinguish the two node declarations using the source and update references to their verified owners.'],
       });
     }
     firstNodeIndex.set(node.id, nodeIndex);
@@ -3112,10 +3086,6 @@ function validateReadableInputsBeforeRouting() {
     for (const [field, endpoint] of [['from', 'source'], ['to', 'target']]) {
       if (nodes.has(edge[field])) continue;
       const message = `Workflow edge "${workflowEdgeName(edge)}" references unknown ${endpoint} "${edge[field]}".`;
-      const supportedFixes = availableNodeIds
-        .filter((nodeId) => acceptsFix((document) => repointReferences(document, edge[field], nodeId)))
-        .slice(0, 3)
-        .flatMap((nodeId) => unknownIdReferenceFixes(edge[field], nodeId));
       fail({
         code: 'workflow/unknown-edge-endpoint',
         severity: 'error',
@@ -3131,9 +3101,8 @@ function validateReadableInputsBeforeRouting() {
           endpoint,
           unknownNodeId: edge[field],
           availableNodeIds,
-          fixVerification: 'each candidate was verified by applying every listed repoint together and recompiling',
         },
-        supportedFixes,
+        supportedFixes: ['Trace this relationship in the source and declare or reference its actual endpoint.'],
       });
     }
   }
@@ -3150,21 +3119,13 @@ function validateReadableInputsBeforeRouting() {
     const node = nodes.get(authoredNode.id);
     if (!laneIds.has(node.lane)) {
       const message = `Workflow node "${node.id}" uses unknown lane "${node.lane}".`;
-      const canonicalNodeIndex = workflow.nodes.findIndex((candidate) => candidate.id === node.id);
-      const supportedFixes = availableLaneIds.flatMap((laneId) => (
-        acceptsFix((document) => {
-          document.nodes[canonicalNodeIndex].lane = laneId;
-        })
-          ? [`set /nodes/${nodeIndex}/lane to verified lane id "${laneId}"`]
-          : []
-      ));
       fail({
         code: 'workflow/unknown-node-lane',
         severity: 'error',
         message,
         subject: { diagramType: 'workflow', node: node.id, path: `/nodes/${nodeIndex}/lane` },
         evidence: { unknownLaneId: node.lane, availableLaneIds },
-        supportedFixes,
+        supportedFixes: ['Trace the owner or phase of this action and declare or reference its actual lane.'],
       });
     }
     if (!Number.isInteger(node.col) || node.col < 0 || node.col >= layout.colXs.length) {
@@ -3179,6 +3140,7 @@ function validateReadableInputsBeforeRouting() {
       ));
       fail({
         code: 'workflow/invalid-node-column',
+        category: 'capability-limit',
         severity: 'error',
         message,
         subject: { diagramType: 'workflow', node: node.id, path: `/nodes/${nodeIndex}/col` },

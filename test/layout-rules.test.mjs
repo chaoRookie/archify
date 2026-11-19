@@ -221,7 +221,7 @@ const CASES = [
   // ---- workflow layout rules ----
   ['workflow: unknown lane', 'workflow', (d) => { d.nodes[0].lane = 'ghost'; }, ['unknown lane "ghost"']],
   ['workflow: node label wider than box', 'workflow',
-    (d) => { d.nodes[0].label = 'An Extremely Long Node Label That Overflows'; }, ['wider than component', 'shorten the label']],
+    (d) => { d.nodes[0].label = 'An Extremely Long Node Label That Overflows'; }, ['wider than component', 'increase node.width']],
   ['workflow: node sublabel wider than its legible minimum', 'workflow',
     (d) => { d.nodes[0].sublabel = 'This supporting sentence is much too long for one workflow node'; }, ['Sublabel', 'legible', 'increase node.width']],
   ['workflow: node tag wider than its legible minimum', 'workflow',
@@ -278,10 +278,10 @@ const CASES = [
     ['mainPath step "planning" -> "executing" has no transition']],
   ['lifecycle: state sublabel wider than its legible minimum', 'lifecycle',
     (d) => { d.states[0].sublabel = 'This supporting sentence is far too long for one lifecycle state box'; },
-    ['Sublabel', 'legible', 'shorten the sublabel']],
+    ['Sublabel', 'legible', 'associated with this state']],
   ['lifecycle: state tag wider than its legible minimum', 'lifecycle',
     (d) => { d.states[0].tag = 'This tag is far too long to sit inside one lifecycle state box at all'; },
-    ['Tag', 'legible', 'shorten the tag']],
+    ['Tag', 'legible', 'associated with this state']],
 
   // ---- architecture layout rules ----
   ['architecture: components overlap', 'architecture',
@@ -310,7 +310,7 @@ const CASES = [
         wraps: ['narrow'],
         pad: 0,
       }];
-    }, ['Boundary label', 'fit', 'shorten']],
+    }, ['Boundary label', 'viewBox', 'increase the viewBox']],
   ['architecture: boundary title must stay inside the authored viewBox', 'architecture',
     (d) => {
       d.meta.quality_profile = 'standard';
@@ -333,7 +333,7 @@ const CASES = [
       }];
     }, ['Boundary label', 'outside the viewBox', 'move wrapped components']],
   ['architecture: label wider than component', 'architecture',
-    (d) => { d.components[0].label = 'An Extremely Long Component Label Overflow'; }, ['wider than component', 'shorten the label']],
+    (d) => { d.components[0].label = 'An Extremely Long Component Label Overflow'; }, ['wider than component', 'widen size']],
   ['architecture: component sublabel wider than its legible minimum', 'architecture',
     (d) => { d.components[0].sublabel = 'This supporting sentence is far too long for one architecture component'; },
     ['Sublabel', 'legible', 'widen size']],
@@ -1883,7 +1883,7 @@ test('architecture: standard keeps an ambiguous corridor renderable for repair',
   assert.equal(code, 0, stderr);
 });
 
-test('architecture: route rhythm warns in standard and blocks a showcase micro segment', () => {
+test('architecture: route rhythm keeps short segments advisory', () => {
   const base = {
     schema_version: 1,
     diagram_type: 'architecture',
@@ -1896,17 +1896,11 @@ test('architecture: route rhythm warns in standard and blocks a showcase micro s
       { id: 'tight', from: 'a', to: 'b', fromSide: 'right', toSide: 'bottom', via: [[125, 100], [125, 160], [390, 160]] },
     ],
   };
-  const standard = structuredClone(base);
-  standard.meta.quality_profile = 'standard';
-  assert.equal(render('architecture', standard).code, 0);
-
-  const showcase = structuredClone(base);
-  showcase.meta.quality_profile = 'showcase';
-  const { code, stderr } = render('architecture', showcase);
-  assert.notEqual(code, 0);
-  assert.match(stderr, /\[composition\/micro-segment\] showcase architecture connections\[0\] id "tight"/);
-  assert.match(stderr, /5px source-stub segment 0/);
-  assert.match(stderr, /wider corridor|move the component/);
+  for (const quality of ['standard', 'showcase']) {
+    const { code, result } = validateCli('architecture', base, quality);
+    assert.equal(code, 0, JSON.stringify(result.diagnostics));
+    assert.ok(result.ok);
+  }
 });
 
 test('architecture: automatic reciprocal adjacent routes keep the showcase interior floor', () => {
@@ -1942,7 +1936,7 @@ test('architecture: automatic reciprocal adjacent routes keep the showcase inter
   assert.ok(report.diagnostics.length > 0);
   assert.ok(report.diagnostics.every(issue => issue.code === 'composition/label-gap'
     || issue.code === 'composition/label-route-clearance'
-    || /^Label ".*" overlaps component /.test(issue.message)), JSON.stringify(report.diagnostics));
+    || (issue.code === 'layout/constraint' && /Label ".*" overlaps component /.test(issue.message))), JSON.stringify(report.diagnostics));
   for (const [index, { id }] of doc.connections.entries()) {
     const points = report.connections[index]?.points;
     assert.ok(points, `expected composition points for ${id}`);

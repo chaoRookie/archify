@@ -320,7 +320,7 @@ function layout({ spineGap, rowGap, drop, firstTrack, ports: portMode }) {
         subject: { diagramType: 'lifecycle' },
         diagnostics: [structureProblem('lifecycle/crowded-side-transitions', message,
           { collection: 'transitions', from: ordered[0].from, to: ordered[0].to },
-          ['merge the triggers into one transition label'])],
+          ['Split the view or use a transition table that retains every trigger and endpoint.'], 'capability-limit')],
       });
     }
     let step = Math.min(20, 48 / (ordered.length - 1));
@@ -854,8 +854,8 @@ function placeLabels({ routes, contentRight }) {
 
 // ---------------------------------------------------------------- validate
 
-function structureProblem(code, message, subject, supportedFixes) {
-  return { code, severity: 'error', message, subject: { diagramType: 'lifecycle', ...subject }, evidence: {}, supportedFixes };
+function structureProblem(code, message, subject, supportedFixes, category = 'fact-error') {
+  return { code, category, severity: 'error', message, subject: { diagramType: 'lifecycle', ...subject }, evidence: {}, supportedFixes };
 }
 
 function validateStructure() {
@@ -869,11 +869,10 @@ function validateStructure() {
   if (states.size !== asArray(lifecycle.states).length) {
     add('lifecycle/duplicate-state', 'State ids must be unique.', { collection: 'states' }, ['give every state a unique id']);
   }
-  const ids = [...states.keys()];
   mainPath.forEach((id, index) => {
     if (!states.has(id)) {
       add('lifecycle/unknown-main-path-state', `mainPath[${index}] "${id}" is not a state.`, { path: `/mainPath/${index}` },
-        ids.slice(0, 3).map((known) => `set /mainPath/${index} to state id "${known}"`));
+        ['Identify the state from source evidence and reference or declare its actual id.']);
     }
   });
   if (new Set(mainPath).size !== mainPath.length) {
@@ -885,14 +884,14 @@ function validateStructure() {
       if (states.has(transition[field])) continue;
       add('lifecycle/unknown-endpoint', `Transition ${index} references unknown ${field === 'from' ? 'source' : 'target'} "${transition[field]}".`,
         { collection: 'transitions', path: `/transitions/${index}/${field}`, transition: transition.id ?? null },
-        ids.slice(0, 3).map((known) => `set /transitions/${index}/${field} to state id "${known}"`));
+        ['Identify the state from source evidence and reference or declare its actual id.']);
     }
   });
   for (let index = 0; index + 1 < mainPath.length; index += 1) {
     const [from, to] = [mainPath[index], mainPath[index + 1]];
     if (!transitions.some((transition) => transition.from === from && transition.to === to)) {
       add('lifecycle/main-path-gap', `mainPath step "${from}" -> "${to}" has no transition.`, { path: `/mainPath/${index}` },
-        [`add a transition from "${from}" to "${to}"`, 'remove the state from mainPath if it is not on the happy path']);
+        ['Trace the actual transition and any intervening states. Make mainPath and transitions reflect that evidence.']);
     }
   }
   asArray(lifecycle.states).forEach((state, index) => {
@@ -904,8 +903,8 @@ function validateStructure() {
       const available = availableNodeTextWidth(STATE_MAX_W) - (field === 'label' && brandMarkFor(state) ? 26 : 0);
       if (value && needed > available) {
         add('lifecycle/state-text-too-long',
-          `${name} "${value}" of state "${state.id}" is wider than the widest ${STATE_MAX_W}px state: it needs ~${needed}px at the ${minimum}px legible minimum, but ${available}px fit — shorten the ${field} and move detail into a card.`,
-          { collection: 'states', path: `/states/${index}/${field}` }, [`shorten the ${field} and move detail into a card`]);
+          `${name} "${value}" of state "${state.id}" is wider than the widest ${STATE_MAX_W}px state: it needs ~${needed}px at the ${minimum}px legible minimum, but ${available}px fit — retain the full wording in a card associated with this state if it cannot fit the node.`,
+          { collection: 'states', path: `/states/${index}/${field}` }, [`use a concise ${field} preserving the state’s identity and keep its full text in an associated card`], 'capability-limit');
       }
     }
   });
@@ -931,22 +930,22 @@ function validateLayout() {
     }).sort((a, b) => b.excessPx - a.excessPx);
     const widenerLabels = [...spacingWideners].map((transition) => `"${transition.label || transition.note}"`);
     const labelFixes = [
-      ...(widenerLabels.length ? [`relieve the routes crowding ${widenerLabels.join(', ')}: those label/note boxes found no clear spot at the base spacing, so lower-row and route spacing grew; main-path gap growth is bounded by the text readability budget. Only equivalent exits with identical labels, notes and variants can share an arrow; keep distinct notes separate, or move a secondary transition elsewhere`] : []),
+      ...(widenerLabels.length ? [`relieve the routes crowding ${widenerLabels.join(', ')}: those label/note boxes found no clear spot at the base spacing, so lower-row and route spacing grew; main-path gap growth is bounded by the text readability budget. Only equivalent exits with identical labels, notes and variants can share an arrow; retain each distinct transition and its note`] : []),
       ...(wideStepLabels.length ? [`review the width-driving main-path transition text: ${wideStepLabels.map((step) => `"${step.from}" -> "${step.to}" ${step.widthDriver.replace('+', ' and ')} (+${step.excessPx}px)`).join(', ')}; ${preserveConditions}`] : []),
     ];
     const message = `The lifecycle is ${viewBox[0]}px wide; at ${smallestText}px text it stays readable on a desktop only up to ${readableWidthBudget}px.${wideStepLabels.length ? ` Transition labels or notes widen their main-path gaps.` : ''}`;
     diagnostics.push({
-      code: 'lifecycle/too-wide', severity: 'error', message,
+      code: 'lifecycle/too-wide', category: 'capability-limit', severity: 'error', message,
       subject: { diagramType: 'lifecycle', path: '/mainPath' },
       evidence: { viewBoxWidth: viewBox[0], budgetPx: readableWidthBudget, mainPathStates: mainPath.length, lowerRowStates: offStates.length, wideStepLabels, spacingWideners: [...spacingWideners].map((transition) => ({ from: transition.from, to: transition.to, label: transition.label || transition.note, widthDriver: widthDriver(transition) })) },
-      supportedFixes: [...labelFixes, 'shorten state labels and sublabels', 'move secondary phases off mainPath or merge adjacent phases', 'split the lifecycle into two diagrams'],
+      supportedFixes: [...labelFixes, 'use linked detail views that preserve every state, transition, condition and handoff'],
     });
     problems.push(message);
   }
   for (const transition of geometry.unplacedLabels) {
     const message = `Transition "${transition.from}" -> "${transition.to}" label "${transition.label || transition.note}" cannot be placed clear of nearby routes.${transition.note ? ' Its note contributes to the label box; the box size and nearby geometry both affect placement.' : ''}`;
     diagnostics.push({
-      code: 'lifecycle/label-unplaced', severity: 'error', message,
+      code: 'lifecycle/label-unplaced', category: 'capability-limit', severity: 'error', message,
       subject: { diagramType: 'lifecycle', collection: 'transitions', index: transitions.indexOf(transition), from: transition.from, to: transition.to },
       evidence: { widthDriver: widthDriver(transition) },
       supportedFixes: [`review the transition ${transition.note ? transition.label ? 'label and note' : 'note' : 'label'} wording; ${preserveConditions}`, 'only equivalent exits with identical labels, notes and variants can share one arrow; keep distinct notes on separate exits without removing them to force sharing'],

@@ -269,7 +269,7 @@ test('more than five parallel transitions between neighbours are a typed error',
   const result = render(neighbourCase(Array.from({ length: 6 }, (_, index) => ({ from: 'w', to: 'f', label: `way ${index}` }))));
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /\[lifecycle\/crowded-side-transitions\]/);
-  assert.match(result.stderr, /merge the triggers into one transition label/);
+  assert.match(result.stderr, /retains every trigger and endpoint/);
 });
 
 test('exits to one target with different labels or variants stay separate connectors', () => {
@@ -380,7 +380,7 @@ test('structure errors are typed diagnostics with fixes', () => {
     transitions: [{ from: 'b', to: 'a' }],
   }));
   assert.notEqual(gap.code, 0);
-  assert.match(gap.stderr, /\[lifecycle\/main-path-gap\] mainPath step "a" -> "b" has no transition/);
+  assert.match(gap.stderr, /\[lifecycle\/main-path-gap\] \[fact-error\] mainPath step "a" -> "b" has no transition/);
   const wide = render(base({
     mainPath: Array.from({ length: 10 }, (_, index) => `s${index}`),
     states: Array.from({ length: 10 }, (_, index) => state(`s${index}`, index ? 'active' : 'start', `Phase number ${index}`)),

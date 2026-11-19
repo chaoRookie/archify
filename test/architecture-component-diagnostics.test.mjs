@@ -75,7 +75,7 @@ test('component-level failures carry structured, actionable diagnostics', t => {
   assert.ok(label, 'an over-wide label reports a typed diagnostic');
   assert.equal(label.subject.nodeId, 'narrow');
   assert.equal(label.evidence.availableWidthPx, 56);
-  assert.ok(label.supportedFixes[1].startsWith('or widen component "narrow" to at least '));
+  assert.ok(label.supportedFixes.some(fix => fix.startsWith('widen component "narrow" to at least ')));
 
   const sublabel = byCode.get('architecture/component-sublabel-overflow');
   assert.ok(sublabel, 'an unreadable sublabel reports a typed diagnostic');
@@ -102,9 +102,8 @@ test('the offered repairs clear their own diagnostics', t => {
   assert.ok(box, viewBoxFix);
   diagram.meta.viewBox = [Number(box[1]), Number(box[2])];
 
-  // The label/sublabel fixes offer "shorten or widen"; apply the shorten branch.
-  narrow.label = 'Narrow';
-  narrow.sublabel = 'fits';
+  const sublabel = receipt.diagnostics.find(d => d.code === 'architecture/component-sublabel-overflow');
+  narrow.size[0] += sublabel.evidence.requiredWidthPx - sublabel.evidence.availableWidthPx;
 
   rewrite(input, diagram);
   const repaired = validate(input, cwd);
@@ -121,8 +120,8 @@ test('tag overflow reports and its widen fix clears it', t => {
   assert.equal(tag.evidence.minimumFontPx, 6);
   assert.equal(tag.evidence.availableWidthPx, 48);
   assert.ok(!receipt.diagnostics.some(d => d.code === 'layout/constraint'));
-  const widen = tag.supportedFixes[1].match(/tag keeps at least (\d+)px of text width/);
-  assert.ok(widen, tag.supportedFixes[1]);
+  const widen = tag.supportedFixes[0].match(/tag keeps at least (\d+)px of text width/);
+  assert.ok(widen, tag.supportedFixes[0]);
   // The advised text width plus the renderer's horizontal padding, read back
   // from evidence so a padding retune cannot break this test spuriously.
   const horizontalPadding = 56 - tag.evidence.availableWidthPx;
@@ -136,8 +135,8 @@ test('the label widen branch clears the label diagnostic', t => {
     { id: 'narrow', type: 'backend', label: 'A Deliberately Long Label', pos: [40, 40], size: [56, 80] },
   ]);
   const label = validate(input, cwd).diagnostics.find(d => d.code === 'architecture/component-label-overflow');
-  const widen = label.supportedFixes[1].match(/widen component "narrow" to at least (\d+)px/);
-  assert.ok(widen, label.supportedFixes[1]);
+  const widen = label.supportedFixes[0].match(/widen component "narrow" to at least (\d+)px/);
+  assert.ok(widen, label.supportedFixes[0]);
   diagram.components[0].size = [Number(widen[1]), 80];
   rewrite(input, diagram);
   assert.equal(validate(input, cwd).ok, true);

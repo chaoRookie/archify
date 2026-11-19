@@ -1083,13 +1083,13 @@ function validateEr() {
   for (const entity of entities.values()) {
     const header = entityHeader(entity);
     if (!header.problem) continue;
-    const message = `Entity "${entity.id}" title does not fit the header at a readable size — widen the entity or shorten the title.`;
+    const message = `Entity "${entity.id}" title does not fit the header at a readable size — widen the entity to fit the full title.`;
     problems.push(message);
     headerDetails.push({
       code: 'erd/header-text-capacity', severity: 'error', message,
       subject: { diagramType: 'erd', entityId: entity.id },
       evidence: { label: entity.label, availableWidth: header.titleWidth, headerHeight: metrics.headerH },
-      supportedFixes: ['Widen the entity.', 'Shorten the title.'],
+      supportedFixes: ['Widen the entity to fit the full title.'],
     });
   }
   for (const domain of unlabelableDomains) {
@@ -1101,16 +1101,16 @@ function validateEr() {
     const listed = members.map((id) => `"${id}"`).join(', ');
     const offGrid = domain.offGrid.map((id) => `"${id}"`).join(', ');
     const message = domain.reason === 'no-grid'
-      ? `Domain "${domain.tag}" is named but cannot be drawn: ${offGrid} have no grid cells, and a band is measured from them. Give every member row/col cells, or drop the tag.`
-      : `Domain "${domain.tag}" is named but cannot be drawn: ${listed} do not fill a solid rectangle of grid cells (a row, a column, or a filled block — not an L or diagonal), and a band around them would enclose cells the domain does not own. Move them into one block, or split the tag.`;
+      ? `Domain "${domain.tag}" is named but cannot be drawn: ${offGrid} have no grid cells, and a band is measured from them. Give every member row/col cells.`
+      : `Domain "${domain.tag}" is named but cannot be drawn: ${listed} do not fill a solid rectangle of grid cells (a row, a column, or a filled block — not an L or diagonal), and a band around them would enclose cells the domain does not own. Move them into one block.`;
     problems.push(message);
     domainDetails.push({
       code: 'erd/domain-not-drawn', severity: 'error', message,
       subject: { diagramType: 'erd', entityId: members[0], domain: domain.tag },
       evidence: { domain: domain.tag, entities: members, reason: domain.reason, offGrid: domain.offGrid },
       supportedFixes: domain.reason === 'no-grid'
-        ? ['Give every domain member row/col cells.', 'Drop the tag to group nothing.']
-        : ['Give the domain members one solid rectangle of grid cells (a row, a column, or a filled block — not an L).', 'Split the tag so each domain can be drawn as a band.', 'Drop the tag to group nothing.'],
+        ? ['Give every domain member row/col cells.']
+        : ['Give the domain members one solid rectangle of grid cells (a row, a column, or a filled block — not an L).'],
     });
   }
   // The band draws the domain name, so a band the canvas cannot show would put
@@ -1120,13 +1120,13 @@ function validateEr() {
     const caption = domainBandCaption(domainBandBox(members));
     if (caption.x >= 4 && caption.y >= 4 && caption.y <= viewBox[1] - 4 && caption.x <= viewBox[0] - 4) continue;
     const listed = members.map((entity) => `"${entity.id}"`).join(', ');
-    const message = `Domain "${tag}" is named but cannot be drawn: the canvas does not reach the band caption for ${listed} at (${caption.x}, ${caption.y}). Move the domain clear of the canvas edge, or drop the tag.`;
+    const message = `Domain "${tag}" is named but cannot be drawn: the canvas does not reach the band caption for ${listed} at (${caption.x}, ${caption.y}). Move the domain clear of the canvas edge.`;
     problems.push(message);
     domainDetails.push({
       code: 'erd/domain-not-drawn', severity: 'error', message,
       subject: { diagramType: 'erd', entityId: members[0].id, domain: tag },
       evidence: { domain: tag, entities: members.map((entity) => entity.id), reason: 'off-canvas', caption, viewBox },
-      supportedFixes: ['Move the domain clear of the canvas edge.', 'Drop the tag to group nothing.'],
+      supportedFixes: ['Move the domain clear of the canvas edge.'],
     });
   }
   // A band claims the box it covers. With gaps smaller than the band padding the
@@ -1140,13 +1140,13 @@ function validateEr() {
       && entity.y < box.y + box.height && entity.y + entity.height > box.y);
     if (!intruder) continue;
     const listed = members.map((entity) => `"${entity.id}"`).join(', ');
-    const message = `Domain "${tag}" is named but cannot be drawn: its band would cover the unrelated table "${intruder.id}". Widen layout.gapX/gapY past the band padding, or split the tag.`;
+    const message = `Domain "${tag}" is named but cannot be drawn: its band would cover the unrelated table "${intruder.id}". Widen layout.gapX/gapY past the band padding.`;
     problems.push(message);
     domainDetails.push({
       code: 'erd/domain-not-drawn', severity: 'error', message,
       subject: { diagramType: 'erd', entityId: members[0].id, domain: tag },
       evidence: { domain: tag, entities: members.map((entity) => entity.id), reason: 'band-covers-entity', band: box, coveredEntity: intruder.id },
-      supportedFixes: ['Widen layout.gapX/gapY past the band padding.', 'Split the tag so each band covers only its own tables.'],
+      supportedFixes: ['Widen layout.gapX/gapY past the band padding.'],
     });
   }
   validateErGridPlacement(er, grid, bands, problems);
@@ -1209,7 +1209,7 @@ function validateEr() {
       continue;
     }
     if (relationship.from === relationship.to) {
-      problems.push(`Relationship ${index}${id} connects entity "${relationship.from}" to itself — draw it between two entities or describe the self-reference in a card.`);
+      problems.push(`Relationship ${index}${id} connects entity "${relationship.from}" to itself — this renderer cannot draw a self-reference. Preserve both endpoints, keys and cardinality in a relationship table or card.`);
       continue;
     }
     const routed = pathFor(relationship);
@@ -1254,7 +1254,7 @@ function validateEr() {
       const extent = side === 'left' || side === 'right' ? entity.height : entity.width;
       const spacing = Math.min(ERD_PORT_SPACING, Math.max(0, extent - 32) / (count - 1));
       if (spacing >= MARKER_HEIGHT) continue;
-      const message = `Entity "${entityId}" shares its ${side} side with ${count} relationship ends: their ports would sit ${Math.round(spacing)}px apart, under the ${MARKER_HEIGHT}px a cardinality glyph is tall, so the symbols overlap. Give the table more rows so that side is taller, spread the relationships across sides with room, or reduce the fan-in.`;
+      const message = `Entity "${entityId}" shares its ${side} side with ${count} relationship ends: their ports would sit ${Math.round(spacing)}px apart, under the ${MARKER_HEIGHT}px a cardinality glyph is tall, so the symbols overlap. Spread the relationships across sides with room, or show connected detail views preserving all endpoints and cardinalities.`;
       problems.push(message);
       portSpacingDetails.push({
         code: 'layout/marker-capacity',
@@ -1263,9 +1263,8 @@ function validateEr() {
         subject: { diagramType: 'erd', path: `/entities/${entityId}` },
         evidence: { entity: entityId, side, relationshipEnds: count, spacingPx: Math.round(spacing), markerHeightPx: MARKER_HEIGHT, sideExtentPx: extent },
         supportedFixes: [
-          `add fields to "${entityId}" so its ${side} side is taller`,
           'spread the relationships across the sides that have room',
-          'reduce the fan-in by modelling the shared parent instead of pointing every child at this table',
+          'show all relationships in linked views with their original endpoints and cardinalities',
         ],
       });
     }

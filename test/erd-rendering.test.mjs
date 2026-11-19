@@ -754,7 +754,8 @@ test('a side that cannot space its cardinality glyphs is a layout diagnostic', (
   assert.match(message, /layout\/marker-capacity/);
   assert.match(message, /"hub" shares its right side with 5 relationship ends/);
   assert.match(message, /under the 14px a cardinality glyph is tall/);
-  assert.match(message, /add fields to "hub"/);
+  assert.match(message, /spread the relationships across the sides/i);
+  assert.doesNotMatch(message, /add fields|reduce the fan-in/);
 });
 
 // The reader's review asked for the default legend to stay in the generated
@@ -850,7 +851,7 @@ test('an authored viewBox that cannot hold the legend fails with a capacity diag
   assert.notEqual(status, 0, 'a fixed area that cannot hold the legend is not a pass');
   const message = stdout + stderr;
   assert.match(message, /legend\/(vertical-overflow|label-too-wide|content-overlap)/);
-  assert.match(message, /Supported fixes|supportedFixes|shorten legend labels|wider viewBox/);
+  assert.match(message, /widen the viewBox|reserve more space/);
 });
 
 // An automatic ERD canvas is taller than one screen for a real schema, and the
