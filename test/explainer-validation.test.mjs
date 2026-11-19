@@ -30,7 +30,7 @@ test('diagram references name real diagram blocks and inline topology nodes',()=
 });
 
 test('writing warnings are configurable and literal code is excluded from prose rules',()=>{
-  const d=base();blocks(d)[0].text='进行检查，大量请求。';const warn=validateExplainer(d);assert.equal(warn.ok,true);assert.ok(warn.diagnostics.some(entry=>entry.code==='explainer/writing-light-verb'));assert.equal(validateExplainer(d,{writingMode:'strict'}).ok,true);assert.deepEqual(validateExplainer(d,{writingMode:'off'}).diagnostics,[]);blocks(d)[0].text='`进行检查，大量请求。`';assert.deepEqual(validateExplainer(d).diagnostics,[]);
+  const d=base();blocks(d)[0].text='进行检查，大量请求。';const warn=validateExplainer(d);assert.equal(warn.ok,true);assert.ok(warn.diagnostics.some(entry=>entry.code==='explainer/writing-light-verb'));assert.equal(validateExplainer(d,{writingMode:'strict'}).ok,false);assert.deepEqual(validateExplainer(d,{writingMode:'off'}).diagnostics,[]);blocks(d)[0].text='`进行检查，大量请求。`';assert.deepEqual(validateExplainer(d).diagnostics,[]);
 });
 
 test('global interactive IDs and source anchors cannot collide',()=>{

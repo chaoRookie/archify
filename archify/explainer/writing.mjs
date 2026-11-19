@@ -124,7 +124,7 @@ export function lintExplainerWriting(entries, {mode = 'warn', locale = 'auto', s
     found.sort((a, b) => a.offset - b.offset || a.rule.localeCompare(b.rule, 'en'));
     for (const item of found) {
       diagnostics.push({
-        code: `explainer/writing-${item.rule}`, severity: 'warning', category: 'visual-preference', message: `[visual-preference] ${item.reason}`,
+        code: `explainer/writing-${item.rule}`, severity: mode === 'strict' ? 'error' : 'warning', category: 'visual-preference', message: `[visual-preference] ${item.reason}`,
         subject: {line: (Number.isInteger(entry.line) && entry.line > 0 ? entry.line : 1) + (original.slice(0, item.offset).match(/\n/gu)?.length || 0),
           component: entry.component, ...(entry.panelId === undefined ? {} : {panelId: entry.panelId})},
         evidence: {rule: item.rule, reason: item.reason, example: item.example,
