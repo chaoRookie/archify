@@ -5,7 +5,7 @@ const CANONICAL_VERSION = 1;
 
 export class ArchitectureDeltaError extends Error {
   constructor(code, message, details = {}) {
-    super(message);
+    super(`[${['delta/no-shared-component-id','delta/repository-mismatch','delta/schema-version-mismatch','delta/type-mismatch'].includes(code) ? 'capability-limit' : 'fact-error'}] ${message}`);
     this.name = 'ArchitectureDeltaError';
     this.code = code;
     this.details = details;
@@ -263,7 +263,7 @@ export function compareArchitecture(base, head, evidence = {}) {
   const shared = sorted([...baseComponents.keys()].filter((id) => headComponents.has(id)));
   if (!shared.length) {
     fail('delta/no-shared-component-id', 'The snapshots share no component id, so Archify cannot prove that they describe the same system.', {
-      supportedFixes: ['preserve at least one authored component id across snapshots'],
+      supportedFixes: ['use snapshots with an evidenced common identity, or present the snapshots side by side'],
     });
   }
 
@@ -279,7 +279,7 @@ export function compareArchitecture(base, head, evidence = {}) {
     fail('delta/repository-mismatch', 'The snapshots name different repositories.', {
       baseRepository: baseRepository.url,
       headRepository: headRepository.url,
-      supportedFixes: ['compare snapshots from the same repository or remove repository evidence from both inputs'],
+      supportedFixes: ['compare snapshots from the same repository; use separate views for different repositories'],
     });
   }
   const proofLevel = baseRepository && headRepository

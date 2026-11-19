@@ -158,7 +158,10 @@ function failure(mutate) {
 }
 
 test('timeline: ambiguous or invalid time input is refused', () => {
-  assert.match(failure((d) => { d.events[0].at = '2026-10-01T10:00:00'; }), /\/events\/0\/at/);
+  for (const at of ['2026-10-01', '2026-10-01T10:00:00']) {
+    assert.match(failure(d => { d.events[0].at = at; }), /\[capability-limit\]/);
+  }
+  assert.match(failure(d => { d.events[0].at = '2026-02-30'; }), /\[fact-error\]/);
   assert.match(failure((d) => { d.events[0].at = '2026-02-30T25:00:00Z'; }), /timeline\/invalid-timestamp/);
   assert.match(failure((d) => { d.meta.timezone = 'Mars/Olympus'; }), /timeline\/invalid-timezone/);
   assert.match(failure((d) => { d.events[0].lane = 'billing'; }), /timeline\/unknown-lane/);

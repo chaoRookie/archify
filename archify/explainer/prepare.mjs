@@ -17,7 +17,7 @@ function fail(code, message, input, reason, example = 'Retry from the unchanged 
     subject: { input, line: 1, component: 'document' }, evidence: { reason, example }, supportedFixes: [example] }]);
 }
 export function parseValidatedExplainer(sourceText, options = {}) {
-  if (Buffer.byteLength(sourceText) > MAX_SOURCE_BYTES) fail('source-limit', 'Explainer draft exceeds the 16 MiB source budget.', options.inputPath, 'source-byte-limit', 'Reduce the draft below 16 MiB and use relative native diagram sources for large specifications.');
+  if (Buffer.byteLength(sourceText) > MAX_SOURCE_BYTES) fail('source-limit', 'Explainer draft exceeds the 16 MiB source budget.', options.inputPath, 'source-byte-limit', 'Use relative native diagram sources or split the material into linked drafts that preserve all evidence.');
   const parsed = parseExplainer(sourceText, { inputPath: options.inputPath, output: options.output });
   if (!parsed.document || parsed.diagnostics.some(entry => entry.severity !== 'warning')) {
     throwDiagnosticError('Explainer draft could not be parsed.', parsed.diagnostics);

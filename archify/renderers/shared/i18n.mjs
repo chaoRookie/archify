@@ -1,3 +1,4 @@
+import { categorizeDiagnostic } from './diagnostic-category.mjs';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -288,7 +289,7 @@ export function localeDiagnostics(diagramType, meta) {
       supportedFixes: ['Add each missing key to meta.translations, translating its English source string and keeping its {placeholders}.'],
     });
   }
-  return diagnostics;
+  return diagnostics.map(categorizeDiagnostic);
 }
 
 export function resolveLocale(locale) {

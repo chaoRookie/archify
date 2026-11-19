@@ -30,7 +30,7 @@ test('diagram references name real diagram blocks and inline topology nodes',()=
 });
 
 test('writing warnings are configurable and literal code is excluded from prose rules',()=>{
-  const d=base();blocks(d)[0].text='进行检查，大量请求。';const warn=validateExplainer(d);assert.equal(warn.ok,true);assert.ok(warn.diagnostics.some(entry=>entry.code==='explainer/writing-light-verb'));assert.equal(validateExplainer(d,{writingMode:'strict'}).ok,false);assert.deepEqual(validateExplainer(d,{writingMode:'off'}).diagnostics,[]);blocks(d)[0].text='`进行检查，大量请求。`';assert.deepEqual(validateExplainer(d).diagnostics,[]);
+  const d=base();blocks(d)[0].text='进行检查，大量请求。';const warn=validateExplainer(d);assert.equal(warn.ok,true);assert.ok(warn.diagnostics.some(entry=>entry.code==='explainer/writing-light-verb'));assert.equal(validateExplainer(d,{writingMode:'strict'}).ok,true);assert.deepEqual(validateExplainer(d,{writingMode:'off'}).diagnostics,[]);blocks(d)[0].text='`进行检查，大量请求。`';assert.deepEqual(validateExplainer(d).diagnostics,[]);
 });
 
 test('global interactive IDs and source anchors cannot collide',()=>{
@@ -63,9 +63,9 @@ test('source links resolve forward IDs and code requires a repository location',
  const d=base();blocks(d)[0].text='Read [facts](source:evidence) and [](source:evidence).';assert.equal(validateExplainer(d).ok,true);
  blocks(d)[0].text='[](source:missing)';check(d,'unresolved-reference');blocks(d)[0].text='Plain.';blocks(d).push({id:'code',type:'code',source:'evidence'});check(d,'code-source-kind');
 });
-test('answer accepts at most four reasons and qualifier checks exclude scope and sources',()=>{
+test('answer accepts all authored reasons and allows measurement qualifications beside each claim',()=>{
  const d=base();d.answer.reasons=['Lower latency','Local transactions'];d.answer.scope='示例，未实测，仅供参考 [5 ms](typical:illustrative, not measured)';d.sources[0].title='illustrative, not measured';
  assert.deepEqual(validateExplainer(d).diagnostics,[]);
- for(const field of ['summary','reasons','body']){const changed=structuredClone(d);if(field==='summary')changed.answer.summary='示例判断';if(field==='reasons')changed.answer.reasons=['本例适用'];if(field==='body')blocks(changed)[0].text='Illustrative, not measured.';const issues=validateExplainer(changed).diagnostics.filter(d=>d.code==='explainer/writing-qualification');assert.ok(issues.length,field);assert.ok(JSON.stringify(issues).includes('把限定条件写进 scope 或来源'));}
- d.answer.reasons=Array(5).fill('Reason');check(d,'schema-maxItems');
+ for(const field of ['summary','reasons','body']){const changed=structuredClone(d);if(field==='summary')changed.answer.summary='示例判断';if(field==='reasons')changed.answer.reasons=['本例适用'];if(field==='body')blocks(changed)[0].text='Illustrative, not measured.';const issues=validateExplainer(changed).diagnostics.filter(d=>d.code==='explainer/writing-qualification');assert.deepEqual(issues,[],field);}
+ d.answer.reasons=Array(5).fill('Reason');assert.equal(validateExplainer(d).ok,true);
 });

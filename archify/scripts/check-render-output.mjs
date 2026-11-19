@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { categorizeDiagnostic } from '../renderers/shared/diagnostic-category.mjs';
 import fs from 'node:fs';
 import { isExplainerHtml, checkExplainerHtml } from '../explainer/check.mjs';
 import { analyzeSvgPath } from '../renderers/shared/svg-path-analysis.mjs';
@@ -207,7 +208,7 @@ if (svgMatches.length === 1) {
   });
   const crossingIsError = qualityProfile === 'showcase';
   const corridorIsError = qualityProfile === 'showcase';
-  const rhythmIsError = qualityProfile === 'showcase';
+  const rhythmIsError = false;
   const labelClearanceIsError = qualityProfile === 'showcase';
   const labelContainmentIsError = qualityProfile === 'showcase';
   const desktopReadabilityIsError = qualityProfile === 'showcase';
@@ -388,7 +389,7 @@ if (svgMatches.length === 1) {
         ...viewportHeightIssue,
         detail: `[composition/viewport-height] ${describeFixedWidthOverflow({ ...viewportHeightIssue, viewBoxWidth: viewBoxSize(svgAttrs)[0], viewBoxHeight: viewBoxSize(svgAttrs)[1] })}`,
       }] : []),
-    ],
+    ].map(issue => categorizeDiagnostic({...issue, message: issue.detail || issue.code})),
   };
   addCheck(
     'label_route_clearance',

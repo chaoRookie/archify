@@ -1117,7 +1117,7 @@ export function cleanRouteRhythmProblems({
 }) {
   if (qualityProfileForGate(profile, profileIsAuthoritative) !== 'showcase') return [];
   const routedRelations = collectEligibleRoutedRelations({ relations, endpointIds, pathFor });
-  return collectRouteRhythmIssues({ routedRelations, interiorSegmentPx, microSegmentPx }).map((hit) => {
+  collectRouteRhythmIssues({ routedRelations, interiorSegmentPx, microSegmentPx }).forEach((hit) => {
     const relation = hit.relation || {};
     const relationId = relation.id ? ` id "${relation.id}"` : '';
     const length = Math.round(hit.length * 10) / 10;
@@ -1130,7 +1130,7 @@ export function cleanRouteRhythmProblems({
     const message = `[${hit.code}] showcase ${diagramType} ${relationCollection}[${hit.relationIndex}]${relationId} "${relation.from}" -> "${relation.to}" has a ${length}px ${hit.position} segment ${hit.segmentIndex} [${from}] -> [${to}] that ${rule} — ${hint}.`;
     recordDiagnostic({
       code: hit.code,
-      severity: 'error',
+      severity: 'warning',
       message,
       subject: relationshipSubject(diagramType, relationCollection, hit.relationIndex, relation),
       evidence: {
@@ -1143,8 +1143,8 @@ export function cleanRouteRhythmProblems({
       },
       supportedFixes: [hint],
     });
-    return message;
   });
+  return [];
 }
 
 export function cleanLabelRouteClearanceProblems({

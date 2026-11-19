@@ -3,8 +3,6 @@
  * locale sets the sentence-limit fallback; bilingual phrase rules always apply.
  */
 const RULES = [
-  {id:'qualification', pattern:/示例|本例|不代表|未实测|仅供参考|\billustrative\b|\bnot measured\b/giu,
-    reason:'把限定条件写进 scope 或来源', example:'@answer scope="适用于当前请求路径"', fix:'把限定条件写进 scope 或来源，正文直接解释判断和原因。'},
   {id: 'light-verb', pattern: /进行(?![中时])\p{Script=Han}{2}|(?:加以|予以|做出|作出)\p{Script=Han}{2}|\b(?:perform an analysis of|carry out an investigation of|make a decision|give consideration to|conduct an? (?:review|investigation|analysis) of)\b/giu,
     reason: 'A light-verb construction can obscure the action.', example: '进行检查 → 检查；做出决定 → 决定; make a decision → decide', fix: 'Use the direct action verb where it preserves the meaning; name who performs the action.'},
   {id: 'cliche', pattern: /赋能|抓手|全方位|多维度|深度融合|至关重要|不可或缺|一站式|底层逻辑|\b(?:at the end of the day|in today[’']s fast-paced world|unlock the full potential|game[- ]changer|cutting[- ]edge|seamless(?:ly)?|delve into)\b/giu,
@@ -83,7 +81,7 @@ export function lintExplainerWriting(entries, {mode = 'warn', locale = 'auto', s
       if (units(text) > 50) found.push({offset: 0, rule: 'scope-length', units: units(text), limit: 50,
         reason: 'The scope reads as a disclaimer rather than a short label.',
         example: '8 人团队 · 上线半年 · 峰值约 300 QPS / Eight people · six months live · ~300 QPS peak',
-        fix: 'Keep the conditions a reader must check, as short labels separated by “·”. Drop process notes about how the page was made.'});
+        fix: 'Group related conditions for readability. Keep the evidence and its limitations with the claims they qualify.'});
     } else {
       for (const rule of RULES) {
         // New regex per entry prevents mutable lastIndex from leaking between calls.
@@ -103,7 +101,7 @@ export function lintExplainerWriting(entries, {mode = 'warn', locale = 'auto', s
     if (entry.component === 'prose' && (units(text) > 120 || sentenceCount > 4)) found.push({offset: 0, rule: 'paragraph-length', units: units(text), limit: 120,
       reason: `This paragraph has ${sentenceCount} sentences and ${units(text)} reading units; long paragraphs are what the page should replace.`,
       example: '把并列要点写成列表，把先后动作写成 @steps，把方案差异写成对比表。 / Turn parallel points into a list, ordered actions into @steps and option differences into a comparison.',
-      fix: 'Split the paragraph into a list, steps or a comparison; keep at most two or three short sentences of prose.'});
+      fix: 'Consider a paragraph break, list, steps or comparison where it makes the argument easier to follow.'});
     if (entry.component !== 'scope') for (const sentence of sentences(text)) {
       const han = sentence.text.match(/\p{Script=Han}/gu)?.length || 0;
       const words = sentence.text.match(/[\p{Script=Latin}\d]+(?:[’'_-][\p{Script=Latin}\d]+)*(?:\.\d+)?/gu)?.length || 0;
@@ -126,7 +124,7 @@ export function lintExplainerWriting(entries, {mode = 'warn', locale = 'auto', s
     found.sort((a, b) => a.offset - b.offset || a.rule.localeCompare(b.rule, 'en'));
     for (const item of found) {
       diagnostics.push({
-        code: `explainer/writing-${item.rule}`, severity: mode === 'strict' ? 'error' : 'warning', message: item.reason,
+        code: `explainer/writing-${item.rule}`, severity: 'warning', category: 'visual-preference', message: `[visual-preference] ${item.reason}`,
         subject: {line: (Number.isInteger(entry.line) && entry.line > 0 ? entry.line : 1) + (original.slice(0, item.offset).match(/\n/gu)?.length || 0),
           component: entry.component, ...(entry.panelId === undefined ? {} : {panelId: entry.panelId})},
         evidence: {rule: item.rule, reason: item.reason, example: item.example,

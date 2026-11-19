@@ -742,9 +742,9 @@ test('--repo-root reaches every typed renderer and schema limits evidence shape'
     { path: 'src/router.js' },
   ];
   fs.writeFileSync(data.input, JSON.stringify(data.diagram));
-  result = run(['validate', 'architecture', data.input, '--repo-root', data.root]);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /must NOT have more than 3 items/);
+  result = run(['validate', 'architecture', data.input, '--repo-root', data.root, '--json']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(JSON.parse(result.stdout).evidence.references >= 4);
 });
 
 test('live preview forwards repo-root and publishes only verified evidence', { timeout: 20000 }, async () => {

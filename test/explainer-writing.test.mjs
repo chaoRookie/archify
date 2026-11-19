@@ -36,7 +36,7 @@ test('writing: long sentences count Han and English words, not punctuation or de
 });
 
 test('writing: strict and off mode preserve explicit severity control', () => {
-  assert.ok(lintExplainerWriting([entry('很多用户。')], {mode: 'strict'}).every(d => d.severity === 'error'));
+  assert.ok(lintExplainerWriting([entry('很多用户。')], {mode: 'strict'}).every(d => d.severity === 'warning' && d.category === 'visual-preference'));
   assert.deepEqual(lintExplainerWriting([entry('很多用户。')], {mode: 'off'}), []);
   assert.throws(() => lintExplainerWriting([], {mode: 'silent'}), /mode/);
   assert.throws(() => lintExplainerWriting([], {sentenceLimits: {en: 0}}), /positive integers/);
@@ -70,7 +70,7 @@ test('writing: URL masking preserves Chinese prose after bare and Markdown links
   ]) {
     const result = lintExplainerWriting([entry(text, {line: 10})], {mode: 'strict'});
     assert.deepEqual(new Set(result.map(d => d.evidence.rule)), new Set(['vague-quantity', 'light-verb']), text);
-    assert.ok(result.every(d => d.severity === 'error'));
+    assert.ok(result.every(d => d.severity === 'warning' && d.category === 'visual-preference'));
     assert.ok(result.every(d => d.subject.line === (text.includes('\n') ? 11 : 10)));
   }
 });

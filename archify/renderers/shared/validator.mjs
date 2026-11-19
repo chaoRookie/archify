@@ -35,6 +35,17 @@ function formatErrors(errors, data) {
   }).join('\n');
 }
 
+export function validCalendarDate(timestamp) {
+  const [year, month, day] = timestamp.slice(0, 10).split('-').map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
+}
+function partialTimestamp(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?)?$/u.test(value)) return false;
+  return validCalendarDate(value);
+}
+
 export function validateSchema(diagramType, data) {
   const validate = validators[diagramType];
   if (!validate) {
@@ -53,20 +64,28 @@ export function validateSchema(diagramType, data) {
         expected: error.schema,
         ...error.params,
       };
-      const supportedFixes = {
-        additionalProperties: [`remove unsupported property ${JSON.stringify(error.params?.additionalProperty)}`],
+      const capacity = (error.keyword === 'maxItems' && !/\/(?:pos|size|via|viewBox|route|lines)(?:\/\d+)?$/u.test(annotated.path))
+        || (error.keyword === 'maximum' && diagramType === 'workflow' && /\/(col|fromCol|toCol)$/u.test(annotated.path))
+        || (error.keyword === 'maxLength' && !annotated.path.endsWith('/id'));
+      const partialTime = diagramType === 'timeline' && error.keyword === 'pattern' && /^\/events\/\d+\/at$/u.test(annotated.path)
+        && partialTimestamp(data.events[Number(annotated.path.split('/')[2])].at);
+      const supportedFixes = partialTime ? ['Keep the date at its recorded precision in a dated list or table, or supply a verified timestamp with an offset.']
+        : capacity ? ['Split or layer the view, or use a representation that can display the complete input with its relationships.']
+        : {
+        additionalProperties: [`represent the value in a supported field or accompanying note instead of unsupported property ${JSON.stringify(error.params?.additionalProperty)}`],
         required: [`add required property ${JSON.stringify(error.params?.missingProperty)}`],
         type: [`use ${JSON.stringify(error.params?.type)} at ${annotated.path}`],
         enum: [`choose one of the allowed values`],
         pattern: [`match the required pattern ${JSON.stringify(error.params?.pattern)}`],
-        minimum: [`use a value ${error.params?.comparison || '>='} ${error.params?.limit}`],
-        maximum: [`use a value ${error.params?.comparison || '<='} ${error.params?.limit}`],
+        minimum: [`verify the source and unit for the required bound ${error.params?.comparison || '>='} ${error.params?.limit}`],
+        maximum: [`verify the source and unit for the required bound ${error.params?.comparison || '<='} ${error.params?.limit}`],
         minItems: [`provide at least ${error.params?.limit} item(s)`],
         maxItems: [`provide at most ${error.params?.limit} item(s)`],
         minLength: [`provide at least ${error.params?.limit} character(s)`],
         maxLength: [`provide at most ${error.params?.limit} character(s)`],
       }[error.keyword] || [];
       return {
+        category: capacity || partialTime ? 'capability-limit' : 'fact-error',
         code: `schema/${error.keyword}`,
         severity: 'error',
         message: `${annotatePath(error.instancePath, data)} ${error.message}`,

@@ -14,6 +14,7 @@ import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
 import { legendFootprint, measureLegend, resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { nodeTextFit } from '../shared/text-fit.mjs';
 import { translateMessage as i18nText } from '../shared/i18n.mjs';
+import { validCalendarDate } from '../shared/validator.mjs';
 import { asArray } from '../shared/geometry.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -64,12 +65,6 @@ const layout = {
 // be a real IANA zone, and every event must sit in a declared lane.
 // Date.parse normalizes some impossible dates (February 30 becomes March 2).
 // Check the authored calendar date independently of its UTC offset first.
-function validCalendarDate(timestamp) {
-  const [year, month, day] = timestamp.slice(0, 10).split('-').map(Number);
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
-}
 const timezone = tl.meta.timezone || 'UTC';
 {
   const problems = [];

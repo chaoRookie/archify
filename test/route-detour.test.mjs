@@ -43,11 +43,11 @@ function longDetour(profile = 'showcase') {
   };
 }
 
-test('showcase rejects an authored route whose empty-space detour is far longer than a legal orthogonal route', t => {
+test('showcase reports an authored route whose empty-space detour is far longer than a legal orthogonal route', t => {
   const { result, receipt } = validate(t, longDetour());
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 0, result.stdout);
   const diagnosis = receipt.diagnostics.find(({ code }) => code === 'composition/excessive-route-detour');
-  assert.ok(diagnosis, JSON.stringify(receipt));
+  assert.equal(diagnosis?.severity, 'warning', JSON.stringify(receipt));
   assert.equal(diagnosis.subject.id, 'sources-to-worker');
   assert.equal(diagnosis.evidence.actualLengthPx, 1862);
   assert.equal(diagnosis.evidence.shortestLegalLengthPx, 358);
@@ -76,9 +76,9 @@ test('an unnecessary control corridor is diagnosed inside a large content envelo
     }],
   };
   const { result, receipt } = validate(t, diagram);
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 0, result.stdout);
   const diagnosis = receipt.diagnostics.find(({ code }) => code === 'composition/excessive-route-detour');
-  assert.ok(diagnosis, JSON.stringify(receipt));
+  assert.equal(diagnosis?.severity, 'warning', JSON.stringify(receipt));
   assert.equal(diagnosis.evidence.emptyExcursionPx.maximum, 0);
   assert.equal(diagnosis.evidence.emptyControlPointClearancePx.maximum, 340);
 });

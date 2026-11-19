@@ -2433,10 +2433,28 @@ function rendererEnv(quality, repoRoot, diagnosticJson = false) {
   };
 }
 
-function diagnostic({ code, message, subject = {}, evidence = {}, supportedFixes = [], severity = 'error' }) {
+function rendererWarnings(stderr) {
+  const warnings = [];
+  for (const line of (stderr || '').split('\n')) {
+    if (line.startsWith('archify-warning ')) {
+      try {
+        const entry = JSON.parse(line.slice('archify-warning '.length));
+        if (entry.severity === 'warning' && typeof entry.message === 'string') {
+          warnings.push(entry);
+          continue;
+        }
+      } catch {}
+    }
+    if (line) process.stderr.write(`${line}\n`);
+  }
+  return warnings;
+}
+
+function diagnostic({ code, message, subject = {}, evidence = {}, supportedFixes = [], severity = 'error', category }) {
   return {
     code,
     severity,
+    ...(category ? {category} : {}),
     message,
     subject,
     evidence,
@@ -2808,14 +2826,14 @@ function reportCompareFailure({ json, stage, error, code = 'delta/internal', det
     type: 'architecture',
     stage,
     error,
-    diagnostics: [{
+    diagnostics: [categorizeDiagnostic({
       code,
       severity: 'error',
       message: error,
       subject: details.side ? { side: details.side, ...(details.path ? { path: details.path } : {}) } : {},
       evidence: Object.fromEntries(Object.entries(details).filter(([key]) => !['side', 'path', 'supportedFixes'].includes(key))),
       supportedFixes: details.supportedFixes || [],
-    }],
+    })],
   };
   if (json) console.log(JSON.stringify(receipt, null, 2));
   else console.error(formatDiagnostics(error, receipt.diagnostics));
@@ -4287,6 +4305,7 @@ function commandRender(args) {
 }
 
 function reportArtifactFailure({ command, json, stage, type, input, output, error, diagnostics = [], status = 1, checker, receiptId, provenance, update }) {
+  diagnostics = diagnostics.map(categorizeDiagnostic);
   const receipt = {
     schemaVersion: 1,
     ok: false,
@@ -4886,8 +4905,7 @@ async function commandDeliver(args) {
       });
       return;
     }
-    if (render.stderr) process.stderr.write(render.stderr);
-    const localeWarnings = [...await specificationLocaleDiagnostics(type, specification), ...(explainerBundle?.diagnostics.filter(entry => entry.severity === 'warning') || [])];
+    const localeWarnings = [...rendererWarnings(render.stderr), ...await specificationLocaleDiagnostics(type, specification), ...(explainerBundle?.diagnostics.filter(entry => entry.severity === 'warning') || [])];
     for (const warning of localeWarnings) process.stderr.write(`archify: ${warning.message}\n`);
     try {
       const renderedCandidate = fs.readFileSync(candidatePath);
@@ -7055,7 +7073,12 @@ async function commandValidate(args, invocation = {}) {
       });
       return;
     }
-    process.stdout.write(result.stdout);
+    const warnings = rendererWarnings(result.stderr);
+    if (warnings.length) {
+      const receipt = JSON.parse(result.stdout);
+      receipt.diagnostics = [...(receipt.diagnostics || []), ...warnings];
+      console.log(JSON.stringify(receipt, null, 2));
+    } else process.stdout.write(result.stdout);
     return;
   }
 
@@ -7091,8 +7114,7 @@ async function commandValidate(args, invocation = {}) {
       });
       exitCode = render.status ?? 1;
     } else {
-      if (render.stderr) process.stderr.write(render.stderr);
-      const localeWarnings = [...await specificationLocaleDiagnostics(type, specification), ...(explainerBundle?.diagnostics.filter(entry => entry.severity === 'warning') || [])];
+      const localeWarnings = [...rendererWarnings(render.stderr), ...await specificationLocaleDiagnostics(type, specification), ...(explainerBundle?.diagnostics.filter(entry => entry.severity === 'warning') || [])];
       for (const warning of localeWarnings) process.stderr.write(`archify: ${warning.message}\n`);
       const checkMaxBuffer = artifactCheckMaxBuffer();
       const check = runNode([path.join(skillRoot, 'scripts/check-render-output.mjs'), out], {
@@ -7210,7 +7232,11 @@ const [command, ...args] = process.argv.slice(2);
 const soleCommandHelp = args.length === 1 && args[0] === '--help'
   && Object.hasOwn(COMMAND_USAGE, command);
 
+let categorizeDiagnostic;
 try {
+  if (!soleCommandHelp && ['render', 'deliver', 'compare', 'validate', 'lint', 'patch', 'finalize', 'preview', 'check', 'inspect'].includes(command)) {
+    ({ categorizeDiagnostic } = await import('../renderers/shared/diagnostic-category.mjs'));
+  }
   switch (soleCommandHelp ? '--help' : command) {
     case undefined:
     case '-h':

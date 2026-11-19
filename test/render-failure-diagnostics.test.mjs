@@ -169,7 +169,7 @@ test('locale warnings cannot classify an unrelated native renderer error', t => 
     throw new TypeError('unrelated implementation defect');`;
   const human = run(['--input-type=module', '-e', script], cwd);
   assert.equal(human.status, 1);
-  assert.match(human.stderr, /archify: meta\.locale "en-US"/);
+  assert.match(human.stderr, /archify: \[capability-limit\] meta\.locale "en-US"/);
   assert.match(human.stderr, /TypeError: unrelated implementation defect/);
   const machine = run(['--input-type=module', '-e', script], cwd, true);
   assert.equal(machine.status, 1);
@@ -190,7 +190,7 @@ test('direct renderer warning modes preserve the successful artifact contract', 
   assert.equal(human.status, 0, human.stderr);
   assert.equal(human.stdout, `${output}\n`);
   assert.equal(human.stderr.trim().split('\n').length, 1);
-  assert.match(human.stderr, /^archify: meta\.locale "en-US"/);
+  assert.match(human.stderr, /^archify: \[capability-limit\] meta\.locale "en-US"/);
   const artifact = fs.readFileSync(output);
   const machine = run([renderer, input, output], cwd, true);
   assert.equal(machine.status, 0, machine.stderr);
@@ -219,7 +219,7 @@ test('public post-render checker failures retain the locale warning once', t => 
     assert.equal(receipt.stage, 'check');
     assert.ok(receipt.diagnostics.some(entry => entry.code === 'artifact/check-output-limit'));
     assert.equal(result.stderr.trim().split('\n').length, 1);
-    assert.match(result.stderr, /^archify: meta\.locale "en-US"/);
+    assert.match(result.stderr, /^archify: \[capability-limit\] meta\.locale "en-US"/);
     assert.equal(fs.readFileSync(output, 'utf8'), 'trusted artifact');
   }
 });

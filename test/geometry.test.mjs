@@ -729,7 +729,7 @@ test('route rhythm separates ordinary endpoint stubs from cramped turns and micr
   ]);
 });
 
-test('route rhythm is a showcase-only generation gate with actionable relationship identity', () => {
+test('route rhythm keeps both standard and showcase artifacts renderable', () => {
   const relations = [{ id: 'events', from: 'api', to: 'bus' }];
   const args = {
     relations,
@@ -739,10 +739,7 @@ test('route rhythm is a showcase-only generation gate with actionable relationsh
     relationCollection: 'connections',
   };
   assert.deepEqual(cleanRouteRhythmProblems({ ...args, profile: 'standard' }), []);
-  const problems = cleanRouteRhythmProblems({ ...args, profile: 'showcase' });
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /\[composition\/micro-segment\] showcase architecture connections\[0\] id "events"/);
-  assert.match(problems[0], /5px source-stub segment 0/);
+  assert.deepEqual(cleanRouteRhythmProblems({ ...args, profile: 'showcase' }), []);
 });
 
 test('asArray coerces non-arrays to [] (degraded-mode guard)', () => {

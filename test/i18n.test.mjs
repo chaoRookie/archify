@@ -480,6 +480,7 @@ test('validate and deliver receipts carry locale warnings as structured diagnost
       ['i18n/invalid-translation', 'warning'],
       ['i18n/translation-coverage', 'warning'],
     ]);
+    assert.ok(receipt.diagnostics.every(entry => entry.category === 'capability-limit' && entry.message.startsWith('[capability-limit]')));
     const coverage = receipt.diagnostics[1].evidence;
     assert.equal(coverage.missingKeysTotal, coverage.totalKeys - coverage.translatedKeys);
     assert.equal(coverage.missingKeys.length, 10);

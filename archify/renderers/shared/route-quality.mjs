@@ -641,7 +641,7 @@ export function cleanRouteDetourProblems({
     const supportedFix = 'remove the distant via points and retry automatic routing, or keep the endpoint sides and move the via corridor near the connected nodes while preserving labels and direction';
     recordDiagnostic({
       code: 'composition/excessive-route-detour',
-      severity: 'error',
+      severity: 'warning',
       message,
       subject: relationshipSubject(diagramType, relationCollection, relationIndex, relation),
       evidence: {
@@ -664,7 +664,6 @@ export function cleanRouteDetourProblems({
       },
       supportedFixes: [supportedFix],
     });
-    problems.push(message);
   }
   return problems;
 }

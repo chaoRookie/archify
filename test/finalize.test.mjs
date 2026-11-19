@@ -225,17 +225,18 @@ test('finalize stops at the failed gate and persists actionable failure evidence
   assert.deepEqual(finalized.summary.diagnostics, [{
     code: 'composition/route-crossing',
     severity: 'error',
-    message: 'A route crosses an unrelated node.',
+    category: 'capability-limit',
+    message: '[capability-limit] A route crosses an unrelated node.',
     subject: { edge: 'a-b' },
     evidence: { intersection: [12, 40] },
     supportedFixes: ['move the diagnosed route'],
   }]);
   assert.deepEqual(finalized.summary.diagnosticSummary, { total: 1, shown: 1, truncated: false });
   assert.deepEqual(finalized.summary.nextAction, {
-    action: 'edit-in-place',
+    action: 'repair-candidate',
     candidate: input,
-    constraint: 'Preserve unaffected semantics and geometry; apply each diagnostic\'s supportedFixes, or the fix its message names, and do not replace the whole candidate.',
-    then: 'finalize-once',
+    constraint: 'Preserve supported facts and fixed geometry. Use the diagnostic evidence to correct the claim, adjust layout, or split the view.',
+    then: 'finalize',
   });
   assert.equal(finalized.receipt.diagnostics[0].evidence.intersection[1], 40);
   assert.equal(JSON.parse(fs.readFileSync(finalized.summary.evidence.receipt)).status, 'fail');
@@ -374,7 +375,7 @@ test('compact failure receipts retain diverse actionable subjects without embedd
   assert.equal(compact.diagnostics.length, 8);
   assert.equal(new Set(compact.diagnostics.map(({ subject }) => subject.id)).size, 8);
   assert.deepEqual(compact.diagnosticSummary, { total: 20, shown: 8, truncated: true, omittedByCode: { 'composition/proper-crossing': 12 } });
-  assert.equal(compact.nextAction.action, 'edit-in-place');
+  assert.equal(compact.nextAction.action, 'repair-candidate');
   assert.match(compact.nextAction.constraint, /Preserve all semantics and user-fixed geometry/);
   assert.match(compact.nextAction.constraint, /local repair or connected-scene reflow/);
   assert.equal('stages' in compact, false);
@@ -391,9 +392,9 @@ test('compact failure summaries count omitted entries by code with repeated subj
   const receipt = { ok: false, status: 'fail', diagnostics };
   const originalDiagnostics = structuredClone(diagnostics);
   const compact = compactFinalizeReceipt(receipt);
-  assert.deepEqual(compact.diagnostics.map(({ message }) => message),
+  assert.deepEqual(compact.diagnostics.map(({ message, category }) => message.slice(category.length + 3)),
     [0, 1, 2, 3, 6, 9, 12, 4].map(index => `Failure ${index}`));
-  const omitted = diagnostics.filter(entry => !compact.diagnostics.some(shown => shown.message === entry.message));
+  const omitted = diagnostics.filter(entry => !compact.diagnostics.some(shown => shown.message === `[${shown.category}] ${entry.message}`));
   assert.equal(omitted.length, compact.diagnosticSummary.total - compact.diagnosticSummary.shown);
   assert.deepEqual(compact.diagnosticSummary.omittedByCode, { 'layout/constraint': 3, ['__proto__']: 3 });
   assert.deepEqual(Object.entries(compact.diagnosticSummary.omittedByCode), [
@@ -1209,7 +1210,7 @@ test('finalize rechecks delivery barriers and the frozen candidate after the bro
   }
 });
 
-test('default finalize JSON preserves complete verified workflow repairs', t => {
+test('default finalize JSON reports the unresolved endpoint without choosing a replacement', t => {
   const directory = workspace(t);
   const input = path.join(directory, 'shared-endpoint.json');
   const output = path.join(directory, 'shared-endpoint.html');
@@ -1235,31 +1236,9 @@ test('default finalize JSON preserves complete verified workflow repairs', t => 
   assert.ok(diagnostic);
   assert.deepEqual(diagnostic.supportedFixes,
     full.diagnostics.find(entry => entry.code === diagnostic.code).supportedFixes);
-  const candidates = new Map();
-  for (const fix of diagnostic.supportedFixes) {
-    const match = /^set (\/\S+) to verified node id "([^"]+)"$/.exec(fix);
-    assert.ok(match, `Expected an executable verified repoint: ${fix}`);
-    const [, pointer, candidate] = match;
-    if (!candidates.has(candidate)) candidates.set(candidate, []);
-    candidates.get(candidate).push(pointer);
-  }
-  assert.ok(candidates.size > 0);
-  for (const [candidate, pointers] of candidates) {
-    assert.deepEqual([...pointers].sort(), ['/edges/0/to', '/edges/1/from', '/mainPath/1']);
-    const repaired = structuredClone(source);
-    for (const pointer of pointers) {
-      const segments = pointer.slice(1).split('/');
-      const key = segments.pop();
-      const parent = segments.reduce((value, segment) => value[segment], repaired);
-      parent[key] = candidate;
-    }
-    fs.writeFileSync(input, JSON.stringify(repaired));
-    const validated = spawnSync(process.execPath, [
-      cli, 'validate', 'workflow', input, '--quality', 'standard', '--json',
-    ], { encoding: 'utf8', timeout: 30000 });
-    assert.equal(validated.status, 0, validated.stderr || validated.stdout);
-    assert.equal(JSON.parse(validated.stdout).ok, true);
-  }
+  assert.match(diagnostic.message, /fact-error/);
+  assert.doesNotMatch(diagnostic.supportedFixes.join(' '), /verified node id/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(input, 'utf8')), source);
 });
 
 test('runFinalize reads the capture limit from the supplied env, not process.env', { timeout: 180000 }, async (t) => {

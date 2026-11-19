@@ -1,3 +1,4 @@
+import { categorizeDiagnostic } from '../renderers/shared/diagnostic-category.mjs';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -461,7 +462,7 @@ function failureDiagnostics(stage, result, receipt, quality) {
     },
     supportedFixes: [invalidReceipt
       ? `restore the ${stage} JSON receipt contract before retrying finalize`
-      : 'use the compact finalize summary to repair the named subject in place, then rerun finalize once'],
+      : 'use the compact finalize summary to repair the named subject in place, then verify the result with finalize'],
   }];
 }
 
@@ -586,7 +587,7 @@ const ROUTE_DIAGNOSTIC = /^(clean-flow\/|composition\/(proper-crossing|ambiguous
 export function compactFinalizeReceipt(receipt) {
   const gates = {};
   for (const stage of FINALIZE_STAGES) gates[stage] = receipt.stages?.[stage]?.status || 'not-run';
-  const allDiagnostics = receipt.diagnostics || [];
+  const allDiagnostics = (receipt.diagnostics || []).map(categorizeDiagnostic);
   const diagnosticLimit = 8;
   const selectedDiagnostics = [];
   const selectedIndexes = new Set();
@@ -607,6 +608,7 @@ export function compactFinalizeReceipt(receipt) {
     selectedIndexes.add(index);
     selectedDiagnostics.push({
       code: entry.code,
+      category: entry.category,
       severity: entry.severity || 'error',
       message: entry.message,
       ...(entry.subject ? { subject: entry.subject } : {}),
@@ -683,7 +685,7 @@ export function compactFinalizeReceipt(receipt) {
         },
         ...(hints.length && !advisoryOnly ? { hints } : {}),
         repair: !advisoryOnly
-          ? 'Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit.'
+          ? 'Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Verify any revised candidate with finalize.'
           : 'Advisory only: this mode places or routes these relationships itself. Report them; do not remove relationships or meaning to reduce crossings.',
       } : {}),
     };
@@ -703,17 +705,17 @@ export function compactFinalizeReceipt(receipt) {
       action: 'inspect-sequence-width',
       evidence: sequenceColumnSpace,
       reason: 'Fixed participant columns leave substantial unused space on the right, after accounting for message labels and notes. This is a layout suggestion, not a failed gate.',
-      repair: 'Check whether the explicit fixed column geometry is intentional. Only when changing that geometry is authorized, save the passing fixed candidate, set only meta.column_fit to "spread", and rerun the complete finalize once with --out-dir <folder>/width-review. If that attempt fails, restore the saved candidate and finalize it with --out-dir <folder>/width-restore; report the remaining suggestion instead of iterating. Preserve participant order, every message, its y position, labels, notes, sources and canvas dimensions. Retain intentional fixed layouts; report the suggestion instead of changing them automatically.',
+      repair: 'Optional: compare a copy using meta.column_fit "spread" if that geometry can change. Keep the passing fixed candidate and its evidence. Preserve participant order, every message, its y position, labels, notes, sources and canvas dimensions. Use a fresh --out-dir for a revised candidate.',
     };
   }
   if (!receipt.ok && receipt.status === 'fail' && receipt.failedStage === 'validate') {
     compact.nextAction = {
-      action: 'edit-in-place',
+      action: 'repair-candidate',
       candidate: receipt.specification?.path,
       constraint: receipt.type === 'architecture' && (receipt.diagnostics || []).some((entry) => ROUTE_DIAGNOSTIC.test(entry.code || ''))
-        ? 'Preserve all semantics and user-fixed geometry. Use references/architecture-layout-repair.md to choose a local repair or connected-scene reflow; edit the existing candidate.'
-        : 'Preserve unaffected semantics and geometry; apply each diagnostic\'s supportedFixes, or the fix its message names, and do not replace the whole candidate.',
-      then: 'finalize-once',
+        ? 'Preserve all semantics and user-fixed geometry. Use references/architecture-layout-repair.md to choose a local repair or connected-scene reflow; choose the representation that preserves every fact.'
+        : 'Preserve supported facts and fixed geometry. Use the diagnostic evidence to correct the claim, adjust layout, or split the view.',
+      then: 'finalize',
     };
   }
   return compact;
@@ -799,6 +801,7 @@ export async function runFinalize({
     visualReview: 'not-requested',
   };
   const persistReceipts = () => {
+    receipt.diagnostics = receipt.diagnostics.map(categorizeDiagnostic);
     if (type === 'explainer') receipt.diagnostics = (receipt.diagnostics || []).map(entry => {
       const location=preparedExplainer?.sourceMap?.[entry.subject?.path] || {};
       return {...entry,subject:{input:resolvedInput,line:location.line || 1,component:'document',...(entry.subject || {})},

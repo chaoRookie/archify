@@ -1,3 +1,4 @@
+import { categorizeDiagnostic } from '../renderers/shared/diagnostic-category.mjs';
 import { explainer as validateGenerated } from '../renderers/shared/generated-validators.mjs';
 import { validateSchema } from '../renderers/shared/validator.mjs';
 import { parseInline } from './inline.mjs';
@@ -21,8 +22,8 @@ export function validateExplainer(document, {sourceMap = {}, inputPath, writingM
     while(value===undefined) { value=sourceMap instanceof Map?sourceMap.get(key):sourceMap[key]; if(!key)break;key=key.slice(0,key.lastIndexOf('/')); }
     return {line:value?.line || 1,column:value?.column || 1,component,path:pointer,...(panelId?{panelId}:{}),...(inputPath?{input:inputPath}:{})};
   }
-  function fail(code,pointer,component,reason,example,panelId) {
-    diagnostics.push({code:`explainer/${code}`,severity:'error',message:reason,subject:location(pointer,component,panelId),
+  function fail(code,pointer,component,reason,example,panelId,category) {
+    diagnostics.push({code:`explainer/${code}`,severity:'error',category,message:reason,subject:location(pointer,component,panelId),
       evidence:{reason,example},supportedFixes:[`Use a valid form, for example: ${example}`]});
   }
   if(!validateGenerated(document)) {
@@ -38,20 +39,21 @@ export function validateExplainer(document, {sourceMap = {}, inputPath, writingM
       const key=`${error.keyword}\0${pointer}\0${JSON.stringify(error.params)}`;if(seen.has(key))continue;seen.add(key);
       let example;
       if(error.keyword==='required')example=`Add ${error.params.missingProperty} to the ${component}.`;
-      else if(error.keyword==='additionalProperties')example=`Remove unsupported ${error.params.additionalProperty}.`;
+      else if(error.keyword==='additionalProperties')example=`Represent ${error.params.additionalProperty} in a supported field or accompanying note.`;
       else if(pointer==='/meta/output')example='"output":"answer.html"';
       else if(error.keyword==='type')example=error.params.type==='number'?'value=12.5':error.params.type==='boolean'?'multiple=true':error.params.type==='array'?'"items":["First item","Second item"]':error.params.type==='object'?'"meta":{"id":"answer-page","title":"Answer"}':'"text":"A direct explanation."';
       else if(error.keyword==='const')example=`Use ${JSON.stringify(error.params.allowedValue)}.`;
       else if(error.keyword==='enum')example=`Choose ${error.params.allowedValues.map(value=>JSON.stringify(value)).join(', ')}.`;
       else if(error.keyword==='oneOf'&&component==='diagram')example='@diagram sequence source=request.sequence.json';
-      else if(error.keyword==='minimum'||error.keyword==='exclusiveMinimum'||error.keyword==='maximum')example=`Use a finite value satisfying the stated bound, such as ${error.params.limit + (error.keyword==='exclusiveMinimum'?1:0)}.`;
+      else if(error.keyword==='maxItems'||error.keyword==='maxLength')example='Split the content across linked views that preserve every fact and citation.';
+      else if(error.keyword==='minimum'||error.keyword==='exclusiveMinimum'||error.keyword==='maximum')example=`Verify the source value and unit against the bound ${error.params.limit}. Preserve a verified out-of-range value in a table or note.`;
       else if(error.keyword==='pattern')example=pointer.endsWith('/revision')?'revision=0123456789abcdef0123456789abcdef01234567':'id=request-path';
       else if(error.keyword==='minItems')example='| a | First option |\n| b | Second option |';
       else if(error.keyword==='minLength')example='text="A direct explanation."';
       else example=component==='panel'?'## Why does this happen? {#reasoning}\nA direct explanation.':component==='source'?'@source facts example title="Stated facts"':`@${component} id=example`;
-      fail(`schema-${error.keyword}`,pointer||'/',component,reason,example);
+      fail(`schema-${error.keyword}`,pointer||'/',component,reason,example,undefined,['maxItems','maxLength'].includes(error.keyword)&&!pointer.endsWith('/lines')&&!pointer.endsWith('/id')?'capability-limit':undefined);
     }
-    return {ok:false,diagnostics};
+    return {ok:false,diagnostics:diagnostics.map(categorizeDiagnostic)};
   }
   const targets=new Map([['answer',{pointer:'/answer',component:'answer'}]]), sourceIds=new Map(), diagrams=new Map();
   function id(value,pointer,component,panelId,registry=targets) {
@@ -116,7 +118,7 @@ export function validateExplainer(document, {sourceMap = {}, inputPath, writingM
       const bp=`${pp}/blocks/${bi}`, component=block.type;
       if(component==='diff')diagnostics.push(...parseExplainerDiff(block.text,{...location(`${bp}/text`,component,panel.id),input:inputPath}).diagnostics);
       if(component==='chart'&&(block.text===undefined)===(block.data===undefined))fail('chart',`${bp}`,component,'A chart has either fence text or a data file, not both or neither.','@chart type=bar data=latency.csv x=day y=p99',panel.id);
-      if(component==='chart'&&block.text!==undefined){const chart=compileExplainerChart(block.text);if(chart.error){const before=diagnostics.length;fail('chart',`${bp}/text`,component,chart.error,chart.example,panel.id);if(chart.line>0)diagnostics[before].subject.line+=chart.line-1;}}
+      if(component==='chart'&&block.text!==undefined){const chart=compileExplainerChart(block.text);if(chart.error){const before=diagnostics.length;fail('chart',`${bp}/text`,component,chart.error,chart.example,panel.id,chart.category);if(chart.line>0)diagnostics[before].subject.line+=chart.line-1;}}
       for(const key of ['text','title','label','note','caption','alt'])if(!['diff','snippet','chart'].includes(component)||key!=='text')text(block[key],`${bp}/${key}`,component,panel.id);
       if(component==='list')block.items.forEach((item,i)=>text(item,`${bp}/items/${i}`,component,panel.id));
       if(component==='facts')block.entries.forEach((item,i)=>{text(item.key,`${bp}/entries/${i}/key`,component,panel.id);text(item.value,`${bp}/entries/${i}/value`,component,panel.id);});
@@ -134,5 +136,5 @@ export function validateExplainer(document, {sourceMap = {}, inputPath, writingM
     }
   }
   diagnostics.push(...lintExplainerWriting(entries,{mode:writingMode,locale:document.meta.locale||'auto'}).map(entry=>({...entry,subject:{...entry.subject,...(inputPath?{input:inputPath}:{})}})));
-  return {ok:!diagnostics.some(entry=>entry.severity==='error'),diagnostics};
+  return {ok:!diagnostics.some(entry=>entry.severity==='error'),diagnostics:diagnostics.map(categorizeDiagnostic)};
 }

@@ -159,7 +159,7 @@ export function verifyRepositoryEvidence(diagramType, diagram, repoRootInput) {
   const repository = diagram.meta?.repository;
   if (!repository) evidenceFailure('repository-evidence/repository-required', 'Repository evidence requires /meta/repository.', {
     subject: { path: '/meta/repository', diagramType, collection },
-    supportedFixes: [`add the pinned repository metadata or remove /${collection} sources`],
+    supportedFixes: [`identify the repository and revision that support /${collection} sources`],
   });
   if (!FULL_SHA_RE.test(repository.revision || '')) {
     evidenceFailure('repository-evidence/revision-invalid', '/meta/repository/revision must be a full 40-character commit SHA.', {
@@ -245,7 +245,7 @@ export function verifyRepositoryEvidence(diagramType, diagram, repoRootInput) {
     evidenceFailure('repository-evidence/revision-unavailable', `Evidence revision ${revision} is not available in the local repository.`, {
       subject: { repoRoot: realRoot },
       evidence: { revision },
-      supportedFixes: ['fetch the pinned commit or pin an available full commit SHA'],
+      supportedFixes: ['locate the checkout or fetch the commit that contains the cited evidence'],
     });
   }
 
@@ -330,7 +330,7 @@ export function verifyRepositoryEvidence(diagramType, diagram, repoRootInput) {
           evidenceFailure('repository-evidence/file-missing', `${where} does not identify a file at revision ${revision}.`, {
             subject: { path: where, ...nodeSubject },
             evidence: { sourcePath: source.path, revision },
-            supportedFixes: ['use a file path that exists at the pinned revision'],
+            supportedFixes: ['locate the file supporting this claim at the pinned revision and cite its exact path'],
           });
         }
         if (source.line) {
@@ -348,7 +348,7 @@ export function verifyRepositoryEvidence(diagramType, diagram, repoRootInput) {
             evidenceFailure('repository-evidence/line-out-of-range', `${at} requests line ${requestedLine}, but ${source.path} has ${lineCount} lines at revision ${revision}.`, {
               subject: { path: at, ...nodeSubject },
               evidence: { sourcePath: source.path, requestedLine, lineCount, revision },
-              supportedFixes: ['use a line range that exists at the pinned revision'],
+              supportedFixes: ['inspect the pinned file and cite the lines supporting this claim'],
             });
           }
         }
@@ -374,7 +374,7 @@ export function verifyRepositoryEvidence(diagramType, diagram, repoRootInput) {
   if (referenceCount === 0) {
     evidenceFailure('repository-evidence/source-required', `/meta/repository requires at least one /${collection} source reference.`, {
       subject: { path: '/meta/repository', diagramType, collection },
-      supportedFixes: [`add at least one verified /${collection} source or remove repository metadata`],
+      supportedFixes: [`cite a verified /${collection} source from the pinned repository`],
     });
   }
 
