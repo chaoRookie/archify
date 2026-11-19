@@ -78,7 +78,9 @@ test('repair receipt: all five modes identify schema subjects and supported fixe
       identity,
     });
     assert.equal(repair.evidence.additionalProperty, 'unexpected');
-    assert.deepEqual(repair.supportedFixes, ['remove unsupported property "unexpected"']);
+    assert.equal(repair.category, 'fact-error');
+    assert.equal(repair.severity, 'error');
+    assert.match(repair.supportedFixes.join(' '), /represent the value in a supported field or accompanying note.*"unexpected"/);
   }
 });
 
@@ -91,7 +93,7 @@ test('repair receipt: human validation formats the same rule without a stack', (
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /\[schema\/additionalProperties\]/);
-  assert.match(result.stderr, /Fix: remove unsupported property "unexpected"/);
+  assert.match(result.stderr, /Fix: represent the value in a supported field or accompanying note.*"unexpected"/);
   assert.doesNotMatch(result.stderr, /\n\s+at\s|file:\/\//);
 });
 

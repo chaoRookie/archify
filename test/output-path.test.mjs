@@ -269,7 +269,6 @@ test('deliver rechecks aliases immediately before committing a verified candidat
   const installedRenderer = path.join(installedRoot, 'renderers/workflow');
   const installedScripts = path.join(installedRoot, 'scripts');
   fs.mkdirSync(installedBin, { recursive: true });
-  fs.mkdirSync(installedShared, { recursive: true });
   fs.mkdirSync(installedRenderer, { recursive: true });
   fs.mkdirSync(installedScripts, { recursive: true });
   fs.copyFileSync(cli, path.join(installedBin, 'archify.mjs'));
@@ -277,26 +276,7 @@ test('deliver rechecks aliases immediately before committing a verified candidat
     path.join(skillRoot, 'bin/delivery-update.mjs'),
     path.join(installedBin, 'delivery-update.mjs'),
   );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/output-path.mjs'),
-    path.join(installedShared, 'output-path.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/path-semantics.mjs'),
-    path.join(installedShared, 'path-semantics.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/portable-path.mjs'),
-    path.join(installedShared, 'portable-path.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/atomic-output.mjs'),
-    path.join(installedShared, 'atomic-output.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/sidecar-path.mjs'),
-    path.join(installedShared, 'sidecar-path.mjs'),
-  );
+  fs.cpSync(path.join(skillRoot, 'renderers/shared'), installedShared, { recursive: true });
   fs.writeFileSync(path.join(installedRenderer, 'render-workflow.mjs'), `
 import fs from 'node:fs';
 const [, output] = process.argv.slice(2);
@@ -1001,30 +981,11 @@ test('compare rechecks every target immediately before committing the artifact p
   const installedRenderer = path.join(installedRoot, 'renderers/architecture');
   const installedScripts = path.join(installedRoot, 'scripts');
   const installedDelta = path.join(installedRoot, 'delta');
-  for (const directory of [installedBin, installedShared, installedRenderer, installedScripts, installedDelta]) {
+  for (const directory of [installedBin, installedRenderer, installedScripts, installedDelta]) {
     fs.mkdirSync(directory, { recursive: true });
   }
   fs.copyFileSync(cli, path.join(installedBin, 'archify.mjs'));
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/output-path.mjs'),
-    path.join(installedShared, 'output-path.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/path-semantics.mjs'),
-    path.join(installedShared, 'path-semantics.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/portable-path.mjs'),
-    path.join(installedShared, 'portable-path.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/atomic-output.mjs'),
-    path.join(installedShared, 'atomic-output.mjs'),
-  );
-  fs.copyFileSync(
-    path.join(skillRoot, 'renderers/shared/sidecar-path.mjs'),
-    path.join(installedShared, 'sidecar-path.mjs'),
-  );
+  fs.cpSync(path.join(skillRoot, 'renderers/shared'), installedShared, { recursive: true });
   fs.writeFileSync(path.join(installedRenderer, 'render-architecture.mjs'), `
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1081,10 +1042,12 @@ export const validateArchitectureDeltaHtml = () => ({ checksPassed: 1, checkCoun
   fs.writeFileSync(base, source);
   fs.writeFileSync(head, '{"meta":{"output":"head.html"},"side":"head"}');
   const marker = path.join(cwd, 'renderer-started');
+  const receiptPath = path.join(initialOutputDirectory, 'delta.receipt.json');
+  fs.writeFileSync(receiptPath, 'trusted receipt');
 
   const child = spawn(process.execPath, [
     path.join(installedBin, 'archify.mjs'),
-    'compare', 'architecture', base, head, output, '--json',
+    'compare', 'architecture', base, head, output, '--receipt', receiptPath, '--json',
   ], {
     cwd,
     encoding: 'utf8',
@@ -1114,6 +1077,8 @@ export const validateArchitectureDeltaHtml = () => ({ checksPassed: 1, checkCoun
   assert.equal(receipt.stage, 'commit');
   assert.equal(receipt.diagnostics[0].code, 'output/input-alias');
   assert.deepEqual(fs.readFileSync(base), source);
+  assert.equal(fs.readFileSync(receiptPath, 'utf8'), 'trusted receipt');
+  assert.equal(fs.existsSync(path.join(initialOutputDirectory, 'diagram.html')), false);
 });
 
 test('doctor reports a missing output-path safety runtime in an installed skill', () => {

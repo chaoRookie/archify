@@ -197,7 +197,8 @@ function assertOnlyLabelDefects(receipt) {
     assert.ok(issue.code === 'composition/label-gap'
       || issue.code === 'composition/label-route-clearance'
       || issue.code === 'layout/boundary-encloses-non-member'
-      || /^Label ".*" overlaps component /.test(issue.message), JSON.stringify(issue));
+      || (issue.code === 'layout/constraint' && issue.category === 'capability-limit'
+        && /Label ".*" overlaps component "/.test(issue.message)), JSON.stringify(issue));
   }
 }
 for (const name of ['audit-luna', 'audit-terra', 'queue-sol']) {

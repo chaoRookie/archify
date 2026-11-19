@@ -155,8 +155,13 @@ test('reports diagnostics the manifest cannot attribute to an injected defect', 
   const result = run(['run', '--manifest', file, '--command', 'validate']);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const receipt = JSON.parse(result.stdout.split('\n')[0]);
-  assert.deepEqual(receipt.rounds[0].unattributed.map((d) => d.code),
-    ['architecture/unknown-endpoint', 'layout/constraint']);
+  const first = receipt.rounds[0];
+  assert.deepEqual(first.attributions, [{ defect: 0, code: 'layout/constraint' }]);
+  assert.deepEqual(first.unattributed.map(d => d.code), ['architecture/unknown-endpoint']);
+  const endpoint = first.diagnostics.find(d => d.code === 'architecture/unknown-endpoint');
+  assert.equal(endpoint.subject.connection, 'jwt-verification');
+  assert.equal(endpoint.subject.path, '/connections/1/from');
+  assert.equal(endpoint.subject.from, 'auth');
   const resultsFile = path.join(tmp, 'unattributed-results.jsonl');
   fs.writeFileSync(resultsFile, `${JSON.stringify(receipt)}\n`);
   const report = run(['report', '--results', resultsFile]);

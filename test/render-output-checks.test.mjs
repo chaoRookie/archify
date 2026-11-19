@@ -898,30 +898,29 @@ test('render output check: detours identify intervening nodes without failing va
   }
 });
 
-test('render output check: endpoint stubs from 8px pass while cramped interior turns are profile-aware', () => {
+test('render output check: endpoint stubs from 8px pass and both profiles warn about cramped interior turns', () => {
   const clean = checkHtml('endpoint-stubs', `
-    <path data-edge-id="lane-hop" data-edge-from="a" data-edge-to="b" data-composition-points="0,20;13,20;13,60;80,60;80,73" d="M 0 20 L 13 20 L 13 60 L 80 60 L 80 73" class="a-default" marker-end="url(#arrowhead)"/>
+    <path data-edge-id="lane-hop" data-edge-from="a" data-edge-to="b" data-composition-points="0,20;8,20;8,60;80,60;80,73" d="M 0 20 L 8 20 L 8 60 L 80 60 L 80 73" class="a-default" marker-end="url(#arrowhead)"/>
   `, 'showcase');
   assert.equal(clean.code, 0);
   assert.equal(clean.result.composition.metrics.shortEndpointSegmentCount, 2);
   assert.equal(clean.result.composition.metrics.shortInteriorSegmentCount, 0);
 
-  const standard = checkHtml('short-turn-standard', `
-    <path data-edge-id="tight" data-edge-from="a" data-edge-to="b" data-composition-points="0,20;24,20;24,29;80,29" d="M 0 20 L 24 20 L 24 29 L 80 29" class="a-default" marker-end="url(#arrowhead)"/>
-  `, 'standard');
-  assert.equal(standard.code, 0);
-  assert.deepEqual(standard.result.composition.summary, { errors: 0, warnings: 1 });
-  assert.equal(standard.result.composition.issues[0].code, 'composition/short-interior-segment');
-  assert.equal(standard.result.checks.find((item) => item.name === 'route_rhythm').ok, true);
-
-  const showcase = checkHtml('short-turn-showcase', `
-    <path data-edge-id="tight" data-edge-from="a" data-edge-to="b" data-composition-points="0,20;24,20;24,29;80,29" d="M 0 20 L 24 20 L 24 29 L 80 29" class="a-default" marker-end="url(#arrowhead)"/>
-  `, 'showcase');
-  assert.notEqual(showcase.code, 0);
-  assert.deepEqual(showcase.result.composition.summary, { errors: 1, warnings: 0 });
-  const rhythm = showcase.result.checks.find((item) => item.name === 'route_rhythm');
-  assert.equal(rhythm.ok, false);
-  assert.match(rhythm.details[0], /\[composition\/short-interior-segment\] showcase relationship id "tight"/);
+  for (const profile of ['standard', 'showcase']) {
+    const { code, result } = checkHtml(`short-turn-${profile}`, `
+      <path data-edge-id="tight" data-edge-from="a" data-edge-to="b" data-composition-points="0,20;24,20;24,29;80,29" d="M 0 20 L 24 20 L 24 29 L 80 29" class="a-default" marker-end="url(#arrowhead)"/>
+    `, profile);
+    assert.equal(code, 0);
+    assert.deepEqual(result.composition.summary, { errors: 0, warnings: 1 });
+    const [issue] = result.composition.issues;
+    assert.equal(issue.code, 'composition/short-interior-segment');
+    assert.equal(issue.category, 'visual-preference');
+    assert.equal(issue.severity, 'warning');
+    assert.equal(issue.length, 9);
+    const rhythm = result.checks.find(item => item.name === 'route_rhythm');
+    assert.equal(rhythm.ok, true);
+    assert.ok(rhythm.details[0].includes(`[composition/short-interior-segment] ${profile} relationship id "tight"`));
+  }
 });
 
 process.on('exit', () => fs.rmSync(tmp, { recursive: true, force: true }));
